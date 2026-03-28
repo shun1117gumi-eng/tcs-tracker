@@ -70,6 +70,10 @@ textarea{resize:none;min-height:76px}
 .sp{background:var(--purple-dim);border-color:var(--purple);color:var(--purple);font-weight:500}
 .tr2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .tb{padding:13px;border-radius:var(--r-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:13px;font-family:var(--sans);cursor:pointer;text-align:center;transition:all .12s}
+.tb.sg{background:var(--green-dim);border-color:var(--green);color:var(--green);font-weight:500}
+.tb.sa{background:var(--amber-dim);border-color:var(--amber);color:var(--amber);font-weight:500}
+.tb.sr3{background:var(--red-dim);border-color:var(--red);color:var(--red);font-weight:500}
+.tb.sb2{background:var(--blue-dim);border-color:var(--blue);color:var(--blue);font-weight:500}
 .save-btn{display:block;width:calc(100% - 32px);margin:8px 16px 16px;padding:15px;border:none;border-radius:var(--r);background:var(--green2);color:#fff;font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s}
 .save-btn:active{transform:scale(.98)}
 .save-btn:disabled{background:var(--text3);cursor:not-allowed}
@@ -194,14 +198,34 @@ textarea{resize:none;min-height:76px}
   <div class="screen hidden" id="screen-entry">
     <div class="topbar"><span class="tt">新規記録</span></div>
     <div style="height:12px"></div>
-    <div class="fb"><label class="fl">研修医名</label><input type="text" id="f-trainee" list="f-tlist" placeholder="名前を入力" autocomplete="off"><datalist id="f-tlist"></datalist></div>
+    <div class="fb"><label class="fl">専攻医名</label><input type="text" id="f-trainee" list="f-tlist" placeholder="名前を入力" autocomplete="off"><datalist id="f-tlist"></datalist></div>
     <div class="fb"><label class="fl">検査日</label><input type="date" id="f-date"></div>
-    <div class="fb"><div class="fr2">
-      <div><label class="fl">症例番号（任意）</label><input type="text" id="f-case" placeholder="例: C-042"></div>
-      <div><label class="fl">指導医</label><input type="text" id="f-sup" placeholder="指導医名"></div>
+    <div class="fb"><label class="fl">指導医</label><input type="text" id="f-sup" placeholder="指導医名"></div>
+
+    <div class="sh">患者背景</div>
+    <div class="fb">
+      <label class="fl" style="margin-bottom:8px">BMI</label>
+      <div class="cg">
+        <div class="chip" data-v="やせ（BMI&lt;18.5）" onclick="sc(this,'bmi','sb2')">やせ（BMI &lt;18.5）</div>
+        <div class="chip" data-v="普通（18.5-25）" onclick="sc(this,'bmi','sg')">普通（18.5-25）</div>
+        <div class="chip" data-v="肥満（25&lt;）" onclick="sc(this,'bmi','sr3')">肥満（25&lt;）</div>
+      </div>
+    </div>
+    <div class="fb">
+      <label class="fl" style="margin-bottom:8px">腹部手術歴</label>
+      <div class="tr2">
+        <div class="tb" data-v="あり" onclick="st(this,'surgery','sa')">あり</div>
+        <div class="tb" data-v="なし" onclick="st(this,'surgery','sg')">なし</div>
+      </div>
+    </div>
+
+    <div class="sh">前処置</div>
+    <div class="fb"><div class="tr2">
+      <div class="tb" data-v="悪" onclick="st(this,'prep','sr3')">悪</div>
+      <div class="tb" data-v="良好" onclick="st(this,'prep','sg')">良好</div>
     </div></div>
-    <div class="fb"><label class="fl">患者背景（任意）</label><input type="text" id="f-pt" placeholder="例: 70代女性, BMI 22"></div>
-    <div class="sh">到達部位</div>
+
+    <div class="sh">自力での到達部位</div>
     <div class="fb"><div class="cg">
       <div class="chip" data-v="S字結腸" onclick="sc(this,'reach','sg')">S字結腸</div>
       <div class="chip" data-v="下行結腸" onclick="sc(this,'reach','sg')">下行結腸</div>
@@ -212,17 +236,20 @@ textarea{resize:none;min-height:76px}
       <div class="chip" data-v="盲腸" onclick="sc(this,'reach','sg')">盲腸 ✓</div>
       <div class="chip" data-v="未到達" onclick="sc(this,'reach','sr3')">未到達</div>
     </div></div>
+
     <div class="sh">自力挿入</div>
     <div class="fb"><div class="tr2">
       <div class="tb" data-v="self" onclick="st(this,'self','sg')">✔ 自力</div>
       <div class="tb" data-v="assist" onclick="st(this,'self','sa')">指導下（介助あり）</div>
     </div></div>
+
     <div class="sh">挿入法</div>
     <div class="fb"><div class="cg">
       <div class="chip" data-v="loop" onclick="sc(this,'method','sa')">ループ形成法</div>
       <div class="chip" data-v="axis" onclick="sc(this,'method','sb2')">軸保持短縮法</div>
       <div class="chip" data-v="both" onclick="sc(this,'method','sp')">組み合わせ</div>
     </div></div>
+
     <div class="sh">検査目的</div>
     <div class="fb"><div class="cg">
       <div class="chip" data-v="スクリーニング" onclick="sc(this,'purpose','sb2')">スクリーニング</div>
@@ -230,21 +257,30 @@ textarea{resize:none;min-height:76px}
       <div class="chip" data-v="症状精査" onclick="sc(this,'purpose','sp')">症状精査</div>
       <div class="chip" data-v="その他" onclick="sc(this,'purpose','sa')">その他</div>
     </div></div>
+
     <div class="sh">薬剤使用</div>
     <div class="fb">
       <label class="fl" style="margin-bottom:8px">鎮静剤</label>
       <div class="tr2">
         <div class="tb" data-v="yes" onclick="st(this,'sedation','sg')">使用あり</div>
-        <div class="tb" data-v="no"  onclick="st(this,'sedation','sr3')">使用なし</div>
+        <div class="tb" data-v="no"  onclick="st(this,'sedation','sa')">使用なし</div>
       </div>
     </div>
     <div class="fb">
       <label class="fl" style="margin-bottom:8px">鎮痙剤</label>
       <div class="tr2">
         <div class="tb" data-v="yes" onclick="st(this,'antispasmodic','sg')">使用あり</div>
-        <div class="tb" data-v="no"  onclick="st(this,'antispasmodic','sr3')">使用なし</div>
+        <div class="tb" data-v="no"  onclick="st(this,'antispasmodic','sa')">使用なし</div>
       </div>
     </div>
+
+    <div class="sh">患者苦痛度</div>
+    <div class="fb"><div class="cg">
+      <div class="chip" data-v="楽" onclick="sc(this,'pain','sg')">楽</div>
+      <div class="chip" data-v="普通" onclick="sc(this,'pain','sa')">普通</div>
+      <div class="chip" data-v="苦しい" onclick="sc(this,'pain','sr3')">苦しい</div>
+    </div></div>
+
     <div class="sh">時間・難易度</div>
     <div class="fb"><div class="fr2">
       <div><label class="fl">挿入時間（分）</label><input type="number" id="f-it" placeholder="例: 12" min="0" max="120" inputmode="numeric"></div>
@@ -257,10 +293,10 @@ textarea{resize:none;min-height:76px}
       <div class="chip" data-v="4" onclick="sc(this,'diff','sa')">4</div>
       <div class="chip" data-v="5" onclick="sc(this,'diff','sr3')">5 — 難</div>
     </div></div>
+
     <div class="sh">良かった点・反省点</div>
     <div class="fb"><label class="fl">良かった点</label><textarea id="f-good" placeholder="例: S字の圧排を少なく挿入できた"></textarea></div>
     <div class="fb"><label class="fl">反省点・課題</label><textarea id="f-bad" placeholder="例: 脾弯曲での右回転のタイミングが遅い"></textarea></div>
-    <div class="fb"><label class="fl">指導医コメント</label><textarea id="f-fb" placeholder="指導医からのフィードバック"></textarea></div>
     <button class="save-btn" id="save-btn" onclick="saveRec()">保存する</button>
     <div style="height:8px"></div>
   </div>
@@ -518,7 +554,7 @@ function initEntry(){
   sel={};
   document.querySelectorAll('.chip').forEach(c=>c.className='chip');
   document.querySelectorAll('.tb').forEach(b=>b.className='tb');
-  ['f-trainee','f-case','f-sup','f-pt','f-good','f-bad','f-fb','f-it','f-ot','f-purpose-other'].forEach(id=>{
+  ['f-trainee','f-sup','f-good','f-bad','f-it','f-ot'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
@@ -537,28 +573,29 @@ function st(el,group,cls){
 async function saveRec(){
   const trainee=document.getElementById('f-trainee').value.trim();
   const date=document.getElementById('f-date').value;
-  if(!trainee){showToast('研修医名を入力してください',true);return;}
+  if(!trainee){showToast('専攻医名を入力してください',true);return;}
   if(!date){showToast('検査日を入力してください',true);return;}
   const btn=document.getElementById('save-btn');
   btn.disabled=true;
   showLoading('保存中...');
   const {error}=await sb.from('records').insert({
     trainee, date,
-    caseno:document.getElementById('f-case').value.trim()||null,
     supervisor:document.getElementById('f-sup').value.trim()||null,
-    patient:document.getElementById('f-pt').value.trim()||null,
+    bmi:sel.bmi||null,
+    surgery:sel.surgery||null,
+    prep:sel.prep||null,
     purpose:sel.purpose||null,
-    sedation:sel.sedation||null,
-    antispasmodic:sel.antispasmodic||null,
     reach:sel.reach||null,
     self:sel.self||null,
     method:sel.method||null,
+    pain:sel.pain||null,
     difficulty:sel.diff||null,
     insert_time:document.getElementById('f-it').value||null,
     obs_time:document.getElementById('f-ot').value||null,
+    sedation:sel.sedation||null,
+    antispasmodic:sel.antispasmodic||null,
     good:document.getElementById('f-good').value.trim()||null,
     bad:document.getElementById('f-bad').value.trim()||null,
-    feedback:document.getElementById('f-fb').value.trim()||null
   });
   hideLoading();
   btn.disabled=false;
@@ -597,23 +634,24 @@ function openDet(id){
   const stars=r.difficulty?'★'.repeat(+r.difficulty)+'☆'.repeat(5-+r.difficulty):'——';
   document.getElementById('det-body').innerHTML=`
     <div class="dg">
-      <div class="df"><div class="dl">到達部位</div><div class="dv" style="font-size:20px;color:${r.reach==='盲腸'?'var(--green)':r.reach==='未到達'?'var(--red)':'var(--amber)'}">${r.reach||'——'}</div></div>
+      <div class="df"><div class="dl">自力での到達部位</div><div class="dv" style="font-size:20px;color:${r.reach==='盲腸'?'var(--green)':r.reach==='未到達'?'var(--red)':'var(--amber)'}">${r.reach||'——'}</div></div>
       <div class="df"><div class="dl">自力挿入</div><div class="dv">${r.self==='self'?'✔ 自力':r.self==='assist'?'指導下':'——'}</div></div>
       <div class="df"><div class="dl">検査目的</div><div class="dv">${r.purpose||'——'}</div></div>
       <div class="df"><div class="dl">挿入法</div><div class="dv">${r.method?METHODS[r.method]:'——'}</div></div>
+      <div class="df"><div class="dl">BMI</div><div class="dv">${r.bmi||'——'}</div></div>
+      <div class="df"><div class="dl">腹部手術歴</div><div class="dv">${r.surgery||'——'}</div></div>
+      <div class="df"><div class="dl">前処置</div><div class="dv">${r.prep||'——'}</div></div>
+      <div class="df"><div class="dl">患者苦痛度</div><div class="dv">${r.pain||'——'}</div></div>
       <div class="df"><div class="dl">鎮静剤</div><div class="dv">${r.sedation==='yes'?'使用あり':r.sedation==='no'?'使用なし':'——'}</div></div>
       <div class="df"><div class="dl">鎮痙剤</div><div class="dv">${r.antispasmodic==='yes'?'使用あり':r.antispasmodic==='no'?'使用なし':'——'}</div></div>
       <div class="df"><div class="dl">難易度</div><div class="dv" style="color:var(--amber)">${stars}</div></div>
       <div class="df"><div class="dl">挿入時間</div><div class="dv">${r.insert_time?r.insert_time+'分':'——'}</div></div>
       <div class="df"><div class="dl">観察時間</div><div class="dv">${r.obs_time?r.obs_time+'分':'——'}</div></div>
       <div class="df"><div class="dl">指導医</div><div class="dv">${r.supervisor||'——'}</div></div>
-      <div class="df"><div class="dl">症例番号</div><div class="dv">${r.caseno||'——'}</div></div>
-      ${r.patient?`<div class="df full"><div class="dl">患者背景</div><div class="dv">${r.patient}</div></div>`:''}
     </div>
-    ${r.good||r.bad||r.feedback?'<div class="sep"></div>':''}
+    ${r.good||r.bad?'<div class="sep"></div>':''}
     ${r.good?`<div class="df" style="margin-bottom:12px"><div class="dl" style="color:var(--green)">良かった点</div><div class="dv" style="font-size:13px;font-weight:400;white-space:pre-wrap;color:var(--text2)">${r.good}</div></div>`:''}
     ${r.bad?`<div class="df" style="margin-bottom:12px"><div class="dl" style="color:var(--amber)">反省点・課題</div><div class="dv" style="font-size:13px;font-weight:400;white-space:pre-wrap;color:var(--text2)">${r.bad}</div></div>`:''}
-    ${r.feedback?`<div class="df" style="margin-bottom:12px"><div class="dl" style="color:var(--blue)">指導医コメント</div><div class="dv" style="font-size:13px;font-weight:400;white-space:pre-wrap;color:var(--text2)">${r.feedback}</div></div>`:''}
     <div class="sep"></div>
     <button class="danger-btn" onclick="delRec(${id})">この記録を削除</button>`;
   openOv('det-ov');
@@ -824,15 +862,15 @@ function openTrainee(trainee){
 
 // ── CSV export ─────────────────────────────────────────────────────────
 function exportCSV(){
-  const hdr=['ID','研修医名','検査日','症例番号','患者背景','検査目的','到達部位','自力挿入','挿入法','難易度','挿入時間(分)','観察時間(分)','鎮静剤','鎮痙剤','指導医','良かった点','反省点','指導医コメント','記録日時'];
+  const hdr=['ID','専攻医名','検査日','指導医','BMI','腹部手術歴','前処置','検査目的','自力での到達部位','自力挿入','挿入法','難易度','挿入時間(分)','観察時間(分)','鎮静剤','鎮痙剤','患者苦痛度','良かった点','反省点','記録日時'];
   const rows=cachedRecords.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(r=>[
-    r.id,r.trainee,r.date,r.caseno,r.patient,r.purpose||'',r.reach,
+    r.id,r.trainee,r.date,r.supervisor,r.bmi,r.surgery,r.prep,r.purpose,r.reach,
     r.self==='self'?'自力':r.self==='assist'?'指導下':'',
     METHODS[r.method]||r.method||'',
     r.difficulty,r.insert_time,r.obs_time,
     r.sedation==='yes'?'使用あり':r.sedation==='no'?'使用なし':'',
     r.antispasmodic==='yes'?'使用あり':r.antispasmodic==='no'?'使用なし':'',
-    r.supervisor,r.good,r.bad,r.feedback,r.created_at
+    r.pain,r.good,r.bad,r.created_at
   ].map(v=>'"'+(String(v||'').replace(/"/g,'""'))+'"'));
   const csv='\uFEFF'+[hdr.join(','),...rows.map(r=>r.join(','))].join('\n');
   Object.assign(document.createElement('a'),{
