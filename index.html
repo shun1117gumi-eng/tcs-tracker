@@ -203,6 +203,16 @@ textarea{resize:none;min-height:76px}
     <div class="fb"><label class="fl">指導医</label><input type="text" id="f-sup" placeholder="指導医名"></div>
 
     <div class="sh">患者背景</div>
+    <div class="fb"><div class="fr2">
+      <div><label class="fl">年齢</label><input type="number" id="f-age" placeholder="例: 65" min="0" max="120" inputmode="numeric"></div>
+      <div>
+        <label class="fl" style="margin-bottom:8px">性別</label>
+        <div class="tr2">
+          <div class="tb" data-v="男" onclick="st(this,'sex','sb2')">男</div>
+          <div class="tb" data-v="女" onclick="st(this,'sex','sp')">女</div>
+        </div>
+      </div>
+    </div></div>
     <div class="fb">
       <label class="fl" style="margin-bottom:8px">BMI</label>
       <div class="cg">
@@ -293,6 +303,18 @@ textarea{resize:none;min-height:76px}
       <div class="chip" data-v="4" onclick="sc(this,'diff','sa')">4</div>
       <div class="chip" data-v="5" onclick="sc(this,'diff','sr3')">5 — 難</div>
     </div></div>
+
+    <div class="sh">ADR / APC</div>
+    <div class="fb">
+      <label class="fl" style="margin-bottom:8px">腺腫発見（ADR）</label>
+      <div class="tr2">
+        <div class="tb" data-v="あり" onclick="st(this,'adr','sg')">腺腫あり</div>
+        <div class="tb" data-v="なし" onclick="st(this,'adr','sa')">腺腫なし</div>
+      </div>
+    </div>
+    <div class="fb"><label class="fl">腺腫発見個数（APC）</label>
+      <input type="number" id="f-apc" placeholder="例: 2" min="0" max="99" inputmode="numeric">
+    </div>
 
     <div class="sh">良かった点・反省点</div>
     <div class="fb"><label class="fl">良かった点</label><textarea id="f-good" placeholder="例: S字の圧排を少なく挿入できた"></textarea></div>
@@ -554,7 +576,7 @@ function initEntry(){
   sel={};
   document.querySelectorAll('.chip').forEach(c=>c.className='chip');
   document.querySelectorAll('.tb').forEach(b=>b.className='tb');
-  ['f-trainee','f-sup','f-good','f-bad','f-it','f-ot'].forEach(id=>{
+  ['f-trainee','f-sup','f-good','f-bad','f-it','f-ot','f-age','f-apc'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
@@ -581,6 +603,8 @@ async function saveRec(){
   const {error}=await sb.from('records').insert({
     trainee, date,
     supervisor:document.getElementById('f-sup').value.trim()||null,
+    age:document.getElementById('f-age').value||null,
+    sex:sel.sex||null,
     bmi:sel.bmi||null,
     surgery:sel.surgery||null,
     prep:sel.prep||null,
@@ -594,6 +618,8 @@ async function saveRec(){
     obs_time:document.getElementById('f-ot').value||null,
     sedation:sel.sedation||null,
     antispasmodic:sel.antispasmodic||null,
+    adr:sel.adr||null,
+    apc:document.getElementById('f-apc').value||null,
     good:document.getElementById('f-good').value.trim()||null,
     bad:document.getElementById('f-bad').value.trim()||null,
   });
@@ -636,6 +662,8 @@ function openDet(id){
     <div class="dg">
       <div class="df"><div class="dl">自力での到達部位</div><div class="dv" style="font-size:20px;color:${r.reach==='盲腸'?'var(--green)':r.reach==='未到達'?'var(--red)':'var(--amber)'}">${r.reach||'——'}</div></div>
       <div class="df"><div class="dl">自力挿入</div><div class="dv">${r.self==='self'?'✔ 自力':r.self==='assist'?'指導下':'——'}</div></div>
+      <div class="df"><div class="dl">年齢</div><div class="dv">${r.age?r.age+'歳':'——'}</div></div>
+      <div class="df"><div class="dl">性別</div><div class="dv">${r.sex||'——'}</div></div>
       <div class="df"><div class="dl">検査目的</div><div class="dv">${r.purpose||'——'}</div></div>
       <div class="df"><div class="dl">挿入法</div><div class="dv">${r.method?METHODS[r.method]:'——'}</div></div>
       <div class="df"><div class="dl">BMI</div><div class="dv">${r.bmi||'——'}</div></div>
@@ -644,6 +672,8 @@ function openDet(id){
       <div class="df"><div class="dl">患者苦痛度</div><div class="dv">${r.pain||'——'}</div></div>
       <div class="df"><div class="dl">鎮静剤</div><div class="dv">${r.sedation==='yes'?'使用あり':r.sedation==='no'?'使用なし':'——'}</div></div>
       <div class="df"><div class="dl">鎮痙剤</div><div class="dv">${r.antispasmodic==='yes'?'使用あり':r.antispasmodic==='no'?'使用なし':'——'}</div></div>
+      <div class="df"><div class="dl">腺腫発見（ADR）</div><div class="dv" style="color:${r.adr==='あり'?'var(--green)':'var(--text2)'}">${r.adr||'——'}</div></div>
+      <div class="df"><div class="dl">腺腫個数（APC）</div><div class="dv">${r.apc!==null&&r.apc!==undefined&&r.apc!==''?r.apc+'個':'——'}</div></div>
       <div class="df"><div class="dl">難易度</div><div class="dv" style="color:var(--amber)">${stars}</div></div>
       <div class="df"><div class="dl">挿入時間</div><div class="dv">${r.insert_time?r.insert_time+'分':'——'}</div></div>
       <div class="df"><div class="dl">観察時間</div><div class="dv">${r.obs_time?r.obs_time+'分':'——'}</div></div>
@@ -862,15 +892,15 @@ function openTrainee(trainee){
 
 // ── CSV export ─────────────────────────────────────────────────────────
 function exportCSV(){
-  const hdr=['ID','専攻医名','検査日','指導医','BMI','腹部手術歴','前処置','検査目的','自力での到達部位','自力挿入','挿入法','難易度','挿入時間(分)','観察時間(分)','鎮静剤','鎮痙剤','患者苦痛度','良かった点','反省点','記録日時'];
+  const hdr=['ID','専攻医名','検査日','指導医','年齢','性別','BMI','腹部手術歴','前処置','検査目的','自力での到達部位','自力挿入','挿入法','難易度','挿入時間(分)','観察時間(分)','鎮静剤','鎮痙剤','患者苦痛度','腺腫発見(ADR)','腺腫個数(APC)','良かった点','反省点','記録日時'];
   const rows=cachedRecords.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(r=>[
-    r.id,r.trainee,r.date,r.supervisor,r.bmi,r.surgery,r.prep,r.purpose,r.reach,
+    r.id,r.trainee,r.date,r.supervisor,r.age,r.sex,r.bmi,r.surgery,r.prep,r.purpose,r.reach,
     r.self==='self'?'自力':r.self==='assist'?'指導下':'',
     METHODS[r.method]||r.method||'',
     r.difficulty,r.insert_time,r.obs_time,
     r.sedation==='yes'?'使用あり':r.sedation==='no'?'使用なし':'',
     r.antispasmodic==='yes'?'使用あり':r.antispasmodic==='no'?'使用なし':'',
-    r.pain,r.good,r.bad,r.created_at
+    r.pain,r.adr,r.apc,r.good,r.bad,r.created_at
   ].map(v=>'"'+(String(v||'').replace(/"/g,'""'))+'"'));
   const csv='\uFEFF'+[hdr.join(','),...rows.map(r=>r.join(','))].join('\n');
   Object.assign(document.createElement('a'),{
