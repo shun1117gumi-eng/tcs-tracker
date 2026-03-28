@@ -135,6 +135,11 @@ textarea{resize:none;min-height:76px}
 .config-desc{font-size:13px;color:var(--text3);text-align:center;line-height:1.6;margin-bottom:8px}
 .config-label{font-size:11px;color:var(--text3);width:100%;margin-bottom:4px;font-weight:500}
 .config-save{width:100%;padding:14px;border:none;border-radius:var(--r-sm);background:var(--green2);color:#fff;font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
+/* User select screen */
+.user-screen{position:fixed;inset:0;z-index:350;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:12px}
+.user-chip-list{width:100%;display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto}
+.user-chip-btn{width:100%;padding:14px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--text);font-size:15px;font-family:var(--sans);cursor:pointer;text-align:left;transition:background .12s}
+.user-chip-btn:active{background:var(--surface2)}
 </style>
 </head>
 <body>
@@ -152,6 +157,21 @@ textarea{resize:none;min-height:76px}
   </div>
   <button class="config-save" onclick="saveConfig()">接続して開始</button>
   <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:4px">設定はこの端末に保存されます。設定変更は管理者→「接続設定のリセット」から。</div>
+</div>
+
+<!-- ── ユーザー選択画面 ── -->
+<div class="user-screen hidden" id="user-screen">
+  <div class="config-title">TCS TRACKER</div>
+  <div class="config-desc">あなたの名前を選択してください</div>
+  <div class="user-chip-list" id="user-chip-list"></div>
+  <div style="width:100%;height:1px;background:var(--border);margin:4px 0"></div>
+  <div style="width:100%">
+    <div class="config-label">新しい名前で始める</div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="new-user-input" placeholder="専攻医名を入力" autocomplete="off" style="flex:1">
+      <button onclick="selectNewUser()" style="padding:11px 16px;background:var(--green2);border:none;border-radius:var(--r-sm);color:#fff;font-size:13px;font-family:var(--sans);cursor:pointer;white-space:nowrap">開始</button>
+    </div>
+  </div>
 </div>
 
 <!-- ── Toast ── -->
@@ -174,7 +194,12 @@ textarea{resize:none;min-height:76px}
 
   <!-- HOME -->
   <div class="screen" id="screen-home">
-    <div class="topbar"><span class="tt">TCS TRACKER</span><span style="font-size:12px;color:var(--text3)" id="h-tname">——</span></div>
+    <div class="topbar"><span class="tt">TCS TRACKER</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--text3)" id="h-tname">——</span>
+        <button onclick="showUserScreen()" style="font-size:11px;padding:4px 10px;background:var(--surface);border:1px solid var(--border2);border-radius:20px;color:var(--text2);cursor:pointer;font-family:var(--sans)">切替</button>
+      </div>
+    </div>
     <div style="height:12px"></div>
     <div class="stat-row">
       <div class="sc"><div class="lb">総検査数</div><div class="vl" id="h-total">—</div><div class="sb" id="h-days">——</div></div>
@@ -467,6 +492,38 @@ async function initApp(){
   showLoading('データを読み込み中...');
   await fetchAll();
   hideLoading();
+  const cur=localStorage.getItem('tcs_cur');
+  if(cur){
+    startApp(cur);
+  } else {
+    showUserScreen();
+  }
+}
+
+function showUserScreen(){
+  const list=document.getElementById('user-chip-list');
+  list.innerHTML=knownTrainees.length
+    ? knownTrainees.map(t=>`<button class="user-chip-btn" onclick="selectUser('${t}')">${t}</button>`).join('')
+    : '<div style="font-size:13px;color:var(--text3);text-align:center;padding:16px">まだ登録者がいません<br>下に名前を入力して開始してください</div>';
+  document.getElementById('user-screen').classList.remove('hidden');
+  document.getElementById('main-app').classList.add('hidden');
+}
+
+function selectUser(name){
+  localStorage.setItem('tcs_cur', name);
+  document.getElementById('user-screen').classList.add('hidden');
+  startApp(name);
+}
+
+function selectNewUser(){
+  const name=document.getElementById('new-user-input').value.trim();
+  if(!name){showToast('名前を入力してください',true);return;}
+  selectUser(name);
+}
+
+function startApp(name){
+  document.getElementById('user-screen').classList.add('hidden');
+  document.getElementById('main-app').classList.remove('hidden');
   renderHome();
 }
 
@@ -520,7 +577,7 @@ function closeOv(id){ document.getElementById(id).classList.remove('open'); }
 // ── HOME ───────────────────────────────────────────────────────────────
 function renderHome(){
   const cur=localStorage.getItem('tcs_cur')||'';
-  const rs=cur?recsOf(cur):cachedRecords;
+  const rs=cur ? recsOf(cur) : cachedRecords;
   const sorted=rs.slice().sort((a,b)=>a.date.localeCompare(b.date));
   document.getElementById('h-tname').textContent=cur||'全員';
   document.getElementById('h-total').textContent=sorted.length;
@@ -635,9 +692,11 @@ async function saveRec(){
 
 // ── HISTORY ────────────────────────────────────────────────────────────
 function renderHist(){
+  const cur=localStorage.getItem('tcs_cur')||'';
   const q=(document.getElementById('hs').value||'').toLowerCase();
-  const sorted=cachedRecords.slice().sort((a,b)=>b.date.localeCompare(a.date));
-  const filtered=q?sorted.filter(r=>(r.trainee||'').toLowerCase().includes(q)||(r.reach||'').includes(q)||(r.good||'').toLowerCase().includes(q)||(r.bad||'').toLowerCase().includes(q)):sorted;
+  const myRecs=cur ? cachedRecords.filter(r=>r.trainee===cur) : cachedRecords;
+  const sorted=myRecs.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const filtered=q?sorted.filter(r=>(r.reach||'').includes(q)||(r.good||'').toLowerCase().includes(q)||(r.bad||'').toLowerCase().includes(q)):sorted;
   const el=document.getElementById('hist-list');
   if(!filtered.length){el.innerHTML='<div class="empty">記録がありません</div>';return;}
   el.innerHTML=filtered.map(r=>{
@@ -785,10 +844,58 @@ function openTrainee(trainee){
   const cr=cecalRate(tr),sr=selfRate(tr),ai=avgInsert(tr);
   const days=tr.length>=2?daysBetween(tr[0].date,tr[tr.length-1].date):0;
 
+  // ── 6ヶ月フェーズ計算 ──────────────────────────────────────
+  const storedStart=localStorage.getItem('tcs_start_'+trainee);
+  const startDate=storedStart ? new Date(storedStart) : (tr.length ? new Date(tr[0].date) : null);
+  const PHASE_LABELS=['前半1〜2ヶ月','前半3〜4ヶ月','後半5〜6ヶ月（前半）','後半5〜6ヶ月（後半）'];
+  // 6ヶ月=180日を4等分（45日ずつ）
+  function getPhase(dateStr){
+    if(!startDate) return -1;
+    const d=daysBetween(startDate.toISOString().split('T')[0], dateStr);
+    if(d<0) return -1;
+    if(d<45) return 0;
+    if(d<90) return 1;
+    if(d<135) return 2;
+    return 3;
+  }
+  const phases=[[],[],[],[]];
+  tr.forEach(r=>{ const p=getPhase(r.date); if(p>=0&&p<=3) phases[p].push(r); });
+
+  function adrRate(rs){ return rs.length?Math.round(rs.filter(r=>r.adr==='あり').length/rs.length*100):null; }
+
+  const phaseHtml=phases.map((rs,i)=>{
+    const cr2=cecalRate(rs),sr2=selfRate(rs),ai2=avgInsert(rs),adr2=adrRate(rs);
+    const isEmpty=rs.length===0;
+    return`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;flex:1;min-width:0">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:8px;letter-spacing:.05em">${PHASE_LABELS[i]}</div>
+      ${isEmpty?`<div style="font-size:11px;color:var(--text3);text-align:center;padding:8px 0">データなし</div>`:`
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${rs.length}件</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--text3)">盲腸到達</span><span style="color:var(--green);font-family:var(--mono);font-weight:500">${cr2!==null?cr2+'%':'——'}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--text3)">自力挿入</span><span style="color:var(--amber);font-family:var(--mono);font-weight:500">${sr2!==null?sr2+'%':'——'}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--text3)">ADR</span><span style="color:var(--blue);font-family:var(--mono);font-weight:500">${adr2!==null?adr2+'%':'——'}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--text3)">挿入時間</span><span style="color:var(--text2);font-family:var(--mono);font-weight:500">${ai2!==null?ai2+'分':'——'}</span></div>
+      </div>`}
+    </div>`;
+  }).join('');
+
+  // ── 移動平均 ──────────────────────────────────────────────
   const cecalRolling=rollingRate(tr,rs=>Math.round(rs.filter(r=>r.reach==='盲腸').length/rs.length*100));
   const selfRolling=rollingRate(tr,rs=>{const w=rs.filter(r=>r.self);return w.length?Math.round(w.filter(r=>r.self==='self').length/w.length*100):null;});
+  const adrRolling=rollingRate(tr,rs=>{const w=rs.filter(r=>r.adr);return w.length?Math.round(w.filter(r=>r.adr==='あり').length/w.length*100):null;});
   const timePts=tr.map((r,i)=>({x:'#'+(i+1),y:r.insert_time&&!isNaN(+r.insert_time)?+r.insert_time:null})).filter(p=>p.y!==null);
   const timeMA=timePts.map((_,i)=>{const w=timePts.slice(Math.max(0,i-4),i+1);return{x:timePts[i].x,y:Math.round(w.reduce((s,p)=>s+p.y,0)/w.length)};});
+
+  // フェーズ区切り線（症例番号ベース）
+  function phaseLines(tr){
+    const lines=[];
+    for(let p=1;p<=3;p++){
+      const idx=tr.findIndex(r=>getPhase(r.date)===p);
+      if(idx>0) lines.push(idx);
+    }
+    return lines;
+  }
+  const pLines=phaseLines(tr);
 
   const msHtml=MILESTONES.map(m=>{
     const{done,value,target,unit}=m.fn(tr);
@@ -804,19 +911,35 @@ function openTrainee(trainee){
       <div class="sc"><div class="lb">検査数</div><div class="vl vg">${tr.length}</div><div class="sb">${days}日間</div></div>
       <div class="sc"><div class="lb">盲腸到達率</div><div class="vl vg">${cr!==null?cr+'%':'——'}</div></div>
       <div class="sc"><div class="lb">自力挿入率</div><div class="vl va">${sr!==null?sr+'%':'——'}</div></div>
-      <div class="sc"><div class="lb">平均挿入時間</div><div class="vl vb">${ai!==null?ai+'分':'——'}</div></div>
+      <div class="sc"><div class="lb">ADR</div><div class="vl vb">${adrRate(tr)!==null?adrRate(tr)+'%':'——'}</div></div>
     </div>
+
+    <div class="sh">研修開始日の設定</div>
+    <div class="fb" style="display:flex;gap:8px;align-items:center">
+      <input type="date" id="start-date-inp" value="${startDate?startDate.toISOString().split('T')[0]:''}" style="flex:1">
+      <button onclick="setStartDate('${trainee}')" style="padding:10px 14px;background:var(--green2);border:none;border-radius:var(--r-sm);color:#fff;font-size:13px;cursor:pointer;white-space:nowrap">設定</button>
+    </div>
+
+    <div class="sh">6ヶ月フェーズ別評価</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 12px">${phaseHtml}</div>
+
     <div class="sh">達成基準チェック</div>
     <div style="padding:0 16px 4px">${msHtml}</div>
+
     <div class="sh">盲腸到達率の推移（5件移動平均）</div>
     <div class="card" style="padding-bottom:10px">
       <div class="cw" style="height:145px"><canvas id="tr-cecal"></canvas></div>
-      <div class="bm-note">基準ライン: 80%</div>
+      <div class="bm-note">基準ライン: 80% &nbsp;|&nbsp; 縦線: フェーズ区切り</div>
     </div>
     <div class="sh">自力挿入率の推移（5件移動平均）</div>
     <div class="card" style="padding-bottom:10px">
       <div class="cw" style="height:145px"><canvas id="tr-self"></canvas></div>
       <div class="bm-note">基準ライン: 50%</div>
+    </div>
+    <div class="sh">ADRの推移（5件移動平均）</div>
+    <div class="card" style="padding-bottom:10px">
+      <div class="cw" style="height:145px"><canvas id="tr-adr"></canvas></div>
+      <div class="bm-note">ADR = 腺腫発見あり / 全検査</div>
     </div>
     <div class="sh">挿入時間の推移</div>
     <div class="card" style="padding-bottom:10px">
@@ -836,6 +959,7 @@ function openTrainee(trainee){
           <div class="rtags">
             ${r.self==='self'?'<span class="rtag tg">自力</span>':r.self==='assist'?'<span class="rtag ta">指導下</span>':''}
             ${r.method?`<span class="rtag tb2">${METHODS[r.method]}</span>`:''}
+            ${r.adr==='あり'?'<span class="rtag tg">腺腫あり</span>':''}
             ${r.insert_time?`<span class="rtag ta">${r.insert_time}分</span>`:''}
           </div></div></div>`;
       }).join('')}
@@ -851,12 +975,29 @@ function openTrainee(trainee){
       },
       plugins:{legend:{display:false}}
     });
+
+    // フェーズ区切り線プラグイン
+    const phasePlugin={id:'phase',afterDraw(chart){
+      if(!pLines.length) return;
+      const{ctx,chartArea:{top,bottom},scales:{x}}=chart;
+      ctx.save();
+      pLines.forEach(idx=>{
+        const label='#'+(idx+1);
+        try{
+          const xPos=x.getPixelForValue(label);
+          ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+          ctx.beginPath();ctx.moveTo(xPos,top);ctx.lineTo(xPos,bottom);ctx.stroke();
+        }catch(e){}
+      });
+      ctx.restore();
+    }};
+
     const cc=document.getElementById('tr-cecal');
     if(cc&&cecalRolling.length){
       new Chart(cc.getContext('2d'),{type:'line',
         data:{datasets:[{data:cecalRolling,borderColor:'#4ade80',backgroundColor:'rgba(74,222,128,.08)',borderWidth:2,pointRadius:3,fill:true,tension:.4,parsing:{xAxisKey:'x',yAxisKey:'y'}}]},
         options:{...axOpts(0,100,v=>v+'%'),plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw.y}%`}}}},
-        plugins:[bmPlugin('rgba(74,222,128,.55)',80,'80%')]
+        plugins:[bmPlugin('rgba(74,222,128,.55)',80,'80%'),phasePlugin]
       });
     }
     const sc2=document.getElementById('tr-self');
@@ -864,7 +1005,15 @@ function openTrainee(trainee){
       new Chart(sc2.getContext('2d'),{type:'line',
         data:{datasets:[{data:selfRolling,borderColor:'#fbbf24',backgroundColor:'rgba(251,191,36,.08)',borderWidth:2,pointRadius:3,fill:true,tension:.4,parsing:{xAxisKey:'x',yAxisKey:'y'}}]},
         options:{...axOpts(0,100,v=>v+'%'),plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw.y}%`}}}},
-        plugins:[bmPlugin('rgba(251,191,36,.55)',50,'50%')]
+        plugins:[bmPlugin('rgba(251,191,36,.55)',50,'50%'),phasePlugin]
+      });
+    }
+    const adrEl=document.getElementById('tr-adr');
+    if(adrEl&&adrRolling.length){
+      new Chart(adrEl.getContext('2d'),{type:'line',
+        data:{datasets:[{data:adrRolling,borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,.08)',borderWidth:2,pointRadius:3,fill:true,tension:.4,parsing:{xAxisKey:'x',yAxisKey:'y'}}]},
+        options:{...axOpts(0,100,v=>v+'%'),plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw.y}%`}}}},
+        plugins:[phasePlugin]
       });
     }
     const tc=document.getElementById('tr-time');
@@ -875,7 +1024,7 @@ function openTrainee(trainee){
           {data:timeMA,borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,.08)',borderWidth:2,pointRadius:0,fill:true,tension:.4,parsing:{xAxisKey:'x',yAxisKey:'y'}}
         ]},
         options:{...axOpts(0,undefined,v=>v+'分'),plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw.y}分`}}}},
-        plugins:[bmPlugin('rgba(96,165,250,.55)',20,'20分')]
+        plugins:[bmPlugin('rgba(96,165,250,.55)',20,'20分'),phasePlugin]
       });
     }
     const rc=document.getElementById('tr-reach');
@@ -884,10 +1033,19 @@ function openTrainee(trainee){
         data:{labels:tr.map((_,i)=>'#'+(i+1)),
           datasets:[{data:tr.map(r=>SEGS.indexOf(r.reach)),borderColor:'#4ade80',backgroundColor:'rgba(74,222,128,.07)',borderWidth:2,pointRadius:4,
             pointBackgroundColor:tr.map(r=>r.self==='self'?'#4ade80':'#fbbf24'),fill:true,tension:.35}]},
-        options:{...axOpts(-.5,6.5,v=>SEGS_S[Math.round(v)]||''),plugins:{legend:{display:false}}}
+        options:{...axOpts(-.5,6.5,v=>SEGS_S[Math.round(v)]||''),plugins:{legend:{display:false}}},
+        plugins:[phasePlugin]
       });
     }
   },120);
+}
+
+function setStartDate(trainee){
+  const d=document.getElementById('start-date-inp').value;
+  if(!d){showToast('日付を選択してください',true);return;}
+  localStorage.setItem('tcs_start_'+trainee,d);
+  showToast('研修開始日を設定しました');
+  openTrainee(trainee);
 }
 
 // ── CSV export ─────────────────────────────────────────────────────────
