@@ -1,0 +1,26 @@
+{
+  "name": "TCS Tracker — 大腸内視鏡トレーニング記録",
+  "short_name": "TCS Tracker",
+  "description": "大腸内視鏡挿入技術のトレーニング記録・習熟度管理アプリ",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1b12",
+  "theme_color": "#0d1b12",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["medical", "education"]
+}

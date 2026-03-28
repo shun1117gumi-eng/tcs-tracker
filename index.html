@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1b12">
+<title>TCS Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+/* ── 設定ここから ───────────────────────────────────────── */
+/* Supabase Project URL と anon key をここに貼り付けてください */
+/* ── 設定ここまで ───────────────────────────────────────── */
+
+:root{
+  --bg:#0d1b12;--bg2:#142019;--bg3:#1c2d21;
+  --surface:#1e2e23;--surface2:#263329;
+  --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15);
+  --text:#e8f0ea;--text2:#8fa896;--text3:#5a7062;
+  --green:#4ade80;--green2:#16a34a;--green-dim:rgba(74,222,128,.12);
+  --amber:#fbbf24;--amber-dim:rgba(251,191,36,.12);
+  --red:#f87171;--red-dim:rgba(248,113,113,.10);
+  --blue:#60a5fa;--blue-dim:rgba(96,165,250,.10);
+  --purple:#c084fc;--purple-dim:rgba(192,132,252,.10);
+  --mono:'IBM Plex Mono',monospace;--sans:'Noto Sans JP',sans-serif;
+  --r:12px;--r-sm:8px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden}
+.app{display:flex;flex-direction:column;height:100dvh}
+.screen{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(68px + var(--safe-b))}
+.screen::-webkit-scrollbar{display:none}
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe-b);z-index:100}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px 7px;border:none;background:none;color:var(--text3);font-family:var(--sans);font-size:10px;cursor:pointer;transition:color .15s}
+.nb.active{color:var(--green)}
+.ni{font-size:21px;line-height:1}
+.topbar{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);padding:13px 16px 11px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tt{font-family:var(--mono);font-size:12px;color:var(--green);letter-spacing:.08em;flex-shrink:0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin:0 16px 12px}
+.ctitle{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 16px 12px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:13px 12px}
+.sc .lb{font-size:10px;color:var(--text3);margin-bottom:3px}
+.sc .vl{font-family:var(--mono);font-size:24px;font-weight:500;line-height:1}
+.sc .sb{font-size:10px;color:var(--text3);margin-top:3px}
+.vg{color:var(--green)}.va{color:var(--amber)}.vb{color:var(--blue)}
+.sr2{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.sl{font-size:11px;color:var(--text2);width:68px;text-align:right;flex-shrink:0}
+.st{flex:1;background:var(--bg3);border-radius:3px;height:17px;overflow:hidden}
+.sf{height:100%;border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.sn{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.75);font-weight:500}
+.fb{padding:0 16px 12px}
+.fl{font-size:11px;color:var(--text3);margin-bottom:5px;display:block;font-weight:500}
+input,select,textarea{width:100%;font-family:var(--sans);font-size:15px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--text);padding:11px 12px;outline:none;-webkit-appearance:none;appearance:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--green2)}
+textarea{resize:none;min-height:76px}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cg{display:flex;flex-wrap:wrap;gap:7px}
+.chip{padding:8px 14px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:13px;font-family:var(--sans);cursor:pointer;transition:all .12s;white-space:nowrap}
+.sg{background:var(--green-dim);border-color:var(--green);color:var(--green);font-weight:500}
+.sa{background:var(--amber-dim);border-color:var(--amber);color:var(--amber);font-weight:500}
+.sb2{background:var(--blue-dim);border-color:var(--blue);color:var(--blue);font-weight:500}
+.sr3{background:var(--red-dim);border-color:var(--red);color:var(--red);font-weight:500}
+.sp{background:var(--purple-dim);border-color:var(--purple);color:var(--purple);font-weight:500}
+.tr2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tb{padding:13px;border-radius:var(--r-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:13px;font-family:var(--sans);cursor:pointer;text-align:center;transition:all .12s}
+.save-btn{display:block;width:calc(100% - 32px);margin:8px 16px 16px;padding:15px;border:none;border-radius:var(--r);background:var(--green2);color:#fff;font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s}
+.save-btn:active{transform:scale(.98)}
+.save-btn:disabled{background:var(--text3);cursor:not-allowed}
+.rl{padding:0 16px}
+.ri{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px;margin-bottom:9px;cursor:pointer;display:flex;align-items:flex-start;gap:11px;transition:background .1s}
+.ri:active{background:var(--surface2)}
+.rdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.rb{flex:1;min-width:0}
+.rdate{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.rtitle{font-size:14px;font-weight:500;margin:2px 0}
+.rtags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.rtag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500}
+.tg{background:var(--green-dim);color:var(--green)}
+.ta{background:var(--amber-dim);color:var(--amber)}
+.tb2{background:var(--blue-dim);color:var(--blue)}
+.overlay{position:fixed;inset:0;z-index:200;background:var(--bg);overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.overlay.open{transform:translateY(0)}
+.oh{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:13px 16px 11px;display:flex;align-items:center;gap:12px}
+.bk{background:var(--surface);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;color:var(--text2);flex-shrink:0}
+.ot{font-size:15px;font-weight:500}
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.df .dl{font-size:10px;color:var(--text3);margin-bottom:3px}
+.df .dv{font-size:15px;color:var(--text);font-weight:500}
+.df.full{grid-column:1/-1}
+.sep{height:1px;background:var(--border);margin:14px 0}
+.sh{padding:18px 16px 7px;font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase}
+.admin-gate{padding:48px 24px;text-align:center}
+.pin-inp{font-family:var(--mono);font-size:28px;text-align:center;letter-spacing:.3em;width:180px}
+.unlock-btn{display:block;margin:16px auto 0;padding:12px 32px;background:var(--green2);border:none;border-radius:var(--r-sm);color:#fff;font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer}
+.tc{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:background .1s}
+.tc:active{background:var(--surface2)}
+.tn{font-size:14px;font-weight:500}
+.tm{font-size:11px;color:var(--text3);margin-top:2px}
+.prog{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:6px}
+.pf{height:100%;border-radius:2px;background:var(--green);transition:width .5s}
+.cw{position:relative;width:100%}
+.milestone{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:var(--r-sm);margin-bottom:8px;border:1px solid}
+.ms-done{background:var(--green-dim);border-color:rgba(74,222,128,.3)}
+.ms-pend{background:var(--bg3);border-color:var(--border)}
+.ms-icon{font-size:15px;flex-shrink:0;margin-top:1px}
+.ms-label{font-size:12px;font-weight:500}
+.ms-sub{font-size:10px;color:var(--text3);margin-top:2px}
+.csv-btn{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface);color:var(--text2);font-size:13px;font-family:var(--sans);cursor:pointer;margin:0 16px 12px}
+.csv-btn:active{background:var(--surface2)}
+.danger-btn{padding:10px 18px;border:1px solid var(--red-dim);border-radius:var(--r-sm);background:transparent;color:var(--red);font-size:13px;font-family:var(--sans);cursor:pointer}
+.empty{text-align:center;padding:56px 24px;color:var(--text3);font-size:14px}
+.hidden{display:none!important}
+.bm-note{font-size:10px;color:var(--text3);margin-top:5px;text-align:right}
+/* Loading / toast */
+.toast{position:fixed;top:0;left:0;right:0;z-index:300;background:var(--green2);color:#fff;font-size:13px;padding:10px 16px;text-align:center;transform:translateY(-100%);transition:transform .25s}
+.toast.show{transform:translateY(0)}
+.toast.error{background:#991b1b}
+.loading-overlay{position:fixed;inset:0;z-index:250;background:rgba(13,27,18,.7);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Config screen */
+.config-screen{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:16px}
+.config-title{font-family:var(--mono);font-size:14px;color:var(--green);letter-spacing:.1em;margin-bottom:4px}
+.config-desc{font-size:13px;color:var(--text3);text-align:center;line-height:1.6;margin-bottom:8px}
+.config-label{font-size:11px;color:var(--text3);width:100%;margin-bottom:4px;font-weight:500}
+.config-save{width:100%;padding:14px;border:none;border-radius:var(--r-sm);background:var(--green2);color:#fff;font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
+</style>
+</head>
+<body>
+<!-- ── 初回設定画面 ── -->
+<div class="config-screen" id="config-screen">
+  <div class="config-title">TCS TRACKER 初期設定</div>
+  <div class="config-desc">Supabase の接続情報を入力してください<br>（Project Settings → API から確認できます）</div>
+  <div style="width:100%">
+    <div class="config-label">Project URL</div>
+    <input type="url" id="cfg-url" placeholder="https://xxxxxxxx.supabase.co" autocomplete="off" spellcheck="false">
+  </div>
+  <div style="width:100%">
+    <div class="config-label">anon public キー</div>
+    <input type="text" id="cfg-key" placeholder="eyJhbGci..." autocomplete="off" spellcheck="false">
+  </div>
+  <button class="config-save" onclick="saveConfig()">接続して開始</button>
+  <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:4px">設定はこの端末に保存されます。設定変更は管理者→「接続設定のリセット」から。</div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── Loading overlay ── -->
+<div class="loading-overlay hidden" id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:13px;color:var(--text2)" id="loading-msg">送信中...</div>
+</div>
+
+<!-- ── Main app ── -->
+<div class="app hidden" id="main-app">
+  <nav class="bnav">
+    <button class="nb active" id="nav-home" onclick="go('home')"><span class="ni">🏠</span>ホーム</button>
+    <button class="nb" id="nav-entry" onclick="go('entry')"><span class="ni">✏️</span>記録</button>
+    <button class="nb" id="nav-history" onclick="go('history')"><span class="ni">📋</span>履歴</button>
+    <button class="nb" id="nav-admin" onclick="go('admin')"><span class="ni">📊</span>管理</button>
+  </nav>
+
+  <!-- HOME -->
+  <div class="screen" id="screen-home">
+    <div class="topbar"><span class="tt">TCS TRACKER</span><span style="font-size:12px;color:var(--text3)" id="h-tname">——</span></div>
+    <div style="height:12px"></div>
+    <div class="stat-row">
+      <div class="sc"><div class="lb">総検査数</div><div class="vl" id="h-total">—</div><div class="sb" id="h-days">——</div></div>
+      <div class="sc"><div class="lb">盲腸到達率</div><div class="vl vg" id="h-cecal">—</div><div class="sb" id="h-cs">——</div></div>
+      <div class="sc"><div class="lb">自力挿入率</div><div class="vl va" id="h-self">—</div><div class="sb" id="h-ss">——</div></div>
+      <div class="sc"><div class="lb">直近の到達</div><div class="vl" id="h-last" style="font-size:17px">——</div><div class="sb" id="h-ld">——</div></div>
+    </div>
+    <div class="card"><div class="ctitle">到達部位の分布</div><div id="seg-bars"></div></div>
+    <div class="card"><div class="ctitle">到達部位の推移（直近20件）</div><div class="cw" style="height:155px"><canvas id="hm-reach"></canvas></div></div>
+    <div class="card">
+      <div class="ctitle">挿入法の割合</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div class="cw" style="width:110px;height:110px;flex-shrink:0"><canvas id="hm-method"></canvas></div>
+        <div id="method-legend" style="flex:1;font-size:12px;line-height:2.1;color:var(--text2)"></div>
+      </div>
+    </div>
+    <div style="height:8px"></div>
+  </div>
+
+  <!-- ENTRY -->
+  <div class="screen hidden" id="screen-entry">
+    <div class="topbar"><span class="tt">新規記録</span></div>
+    <div style="height:12px"></div>
+    <div class="fb"><label class="fl">研修医名</label><input type="text" id="f-trainee" list="f-tlist" placeholder="名前を入力" autocomplete="off"><datalist id="f-tlist"></datalist></div>
+    <div class="fb"><label class="fl">検査日</label><input type="date" id="f-date"></div>
+    <div class="fb"><div class="fr2">
+      <div><label class="fl">症例番号（任意）</label><input type="text" id="f-case" placeholder="例: C-042"></div>
+      <div><label class="fl">指導医</label><input type="text" id="f-sup" placeholder="指導医名"></div>
+    </div></div>
+    <div class="fb"><label class="fl">患者背景（任意）</label><input type="text" id="f-pt" placeholder="例: 70代女性, BMI 22"></div>
+    <div class="sh">到達部位</div>
+    <div class="fb"><div class="cg">
+      <div class="chip" data-v="S字結腸" onclick="sc(this,'reach','sg')">S字結腸</div>
+      <div class="chip" data-v="下行結腸" onclick="sc(this,'reach','sg')">下行結腸</div>
+      <div class="chip" data-v="脾弯曲" onclick="sc(this,'reach','sg')">脾弯曲</div>
+      <div class="chip" data-v="横行結腸" onclick="sc(this,'reach','sg')">横行結腸</div>
+      <div class="chip" data-v="肝弯曲" onclick="sc(this,'reach','sg')">肝弯曲</div>
+      <div class="chip" data-v="上行結腸" onclick="sc(this,'reach','sg')">上行結腸</div>
+      <div class="chip" data-v="盲腸" onclick="sc(this,'reach','sg')">盲腸 ✓</div>
+      <div class="chip" data-v="未到達" onclick="sc(this,'reach','sr3')">未到達</div>
+    </div></div>
+    <div class="sh">自力挿入</div>
+    <div class="fb"><div class="tr2">
+      <div class="tb" data-v="self" onclick="st(this,'self','sg')">✔ 自力</div>
+      <div class="tb" data-v="assist" onclick="st(this,'self','sa')">指導下（介助あり）</div>
+    </div></div>
+    <div class="sh">挿入法</div>
+    <div class="fb"><div class="cg">
+      <div class="chip" data-v="loop" onclick="sc(this,'method','sa')">ループ形成法</div>
+      <div class="chip" data-v="axis" onclick="sc(this,'method','sb2')">軸保持短縮法</div>
+      <div class="chip" data-v="both" onclick="sc(this,'method','sp')">組み合わせ</div>
+    </div></div>
+    <div class="sh">検査目的</div>
+    <div class="fb"><div class="cg">
+      <div class="chip" data-v="スクリーニング" onclick="sc(this,'purpose','sb2')">スクリーニング</div>
+      <div class="chip" data-v="サーベイランス" onclick="sc(this,'purpose','sb2')">サーベイランス</div>
+      <div class="chip" data-v="症状精査" onclick="sc(this,'purpose','sp')">症状精査</div>
+      <div class="chip" data-v="その他" onclick="sc(this,'purpose','sa')">その他</div>
+    </div></div>
+    <div class="sh">薬剤使用</div>
+    <div class="fb">
+      <label class="fl" style="margin-bottom:8px">鎮静剤</label>
+      <div class="tr2">
+        <div class="tb" data-v="yes" onclick="st(this,'sedation','sg')">使用あり</div>
+        <div class="tb" data-v="no"  onclick="st(this,'sedation','sr3')">使用なし</div>
+      </div>
+    </div>
+    <div class="fb">
+      <label class="fl" style="margin-bottom:8px">鎮痙剤</label>
+      <div class="tr2">
+        <div class="tb" data-v="yes" onclick="st(this,'antispasmodic','sg')">使用あり</div>
+        <div class="tb" data-v="no"  onclick="st(this,'antispasmodic','sr3')">使用なし</div>
+      </div>
+    </div>
+    <div class="sh">時間・難易度</div>
+    <div class="fb"><div class="fr2">
+      <div><label class="fl">挿入時間（分）</label><input type="number" id="f-it" placeholder="例: 12" min="0" max="120" inputmode="numeric"></div>
+      <div><label class="fl">観察時間（分）</label><input type="number" id="f-ot" placeholder="例: 8" min="0" max="60" inputmode="numeric"></div>
+    </div></div>
+    <div class="fb"><label class="fl">難易度</label><div class="cg">
+      <div class="chip" data-v="1" onclick="sc(this,'diff','sg')">1 — 易</div>
+      <div class="chip" data-v="2" onclick="sc(this,'diff','sg')">2</div>
+      <div class="chip" data-v="3" onclick="sc(this,'diff','sa')">3 — 中</div>
+      <div class="chip" data-v="4" onclick="sc(this,'diff','sa')">4</div>
+      <div class="chip" data-v="5" onclick="sc(this,'diff','sr3')">5 — 難</div>
+    </div></div>
+    <div class="sh">良かった点・反省点</div>
+    <div class="fb"><label class="fl">良かった点</label><textarea id="f-good" placeholder="例: S字の圧排を少なく挿入できた"></textarea></div>
+    <div class="fb"><label class="fl">反省点・課題</label><textarea id="f-bad" placeholder="例: 脾弯曲での右回転のタイミングが遅い"></textarea></div>
+    <div class="fb"><label class="fl">指導医コメント</label><textarea id="f-fb" placeholder="指導医からのフィードバック"></textarea></div>
+    <button class="save-btn" id="save-btn" onclick="saveRec()">保存する</button>
+    <div style="height:8px"></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="screen hidden" id="screen-history">
+    <div class="topbar">
+      <span class="tt">履歴</span>
+      <input type="text" id="hs" placeholder="検索..." oninput="renderHist()" style="width:120px;font-size:12px;padding:6px 10px">
+    </div>
+    <div style="height:8px"></div>
+    <div class="rl" id="hist-list"></div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="screen hidden" id="screen-admin">
+    <div class="topbar"><span class="tt">管理者ビュー</span></div>
+    <div id="admin-gate">
+      <div class="admin-gate">
+        <div style="font-size:16px;margin-bottom:8px;color:var(--text)">管理者ログイン</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:24px">PINコードを入力してください</div>
+        <input type="password" class="pin-inp" id="pin-inp" maxlength="6" inputmode="numeric" placeholder="——">
+        <button class="unlock-btn" onclick="checkPin()">ログイン</button>
+        <p style="font-size:11px;color:var(--text3);margin-top:12px">初期PIN: 1234（設定で変更可）</p>
+      </div>
+    </div>
+    <div id="admin-content" class="hidden">
+      <div style="height:12px"></div>
+      <div class="sh">研修医一覧</div>
+      <div style="padding:0 16px 4px" id="tr-picker"></div>
+      <div class="sh">全体統計</div>
+      <div class="stat-row">
+        <div class="sc"><div class="lb">総記録数</div><div class="vl vg" id="a-tot">—</div></div>
+        <div class="sc"><div class="lb">登録研修医数</div><div class="vl vb" id="a-tr">—</div></div>
+        <div class="sc"><div class="lb">全体盲腸到達率</div><div class="vl vg" id="a-cr">—</div></div>
+        <div class="sc"><div class="lb">全体自力挿入率</div><div class="vl va" id="a-sr">—</div></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">研修医別 盲腸到達率</div>
+        <div class="cw" id="cmp-wrap" style="height:200px"><canvas id="cmp-chart"></canvas></div>
+      </div>
+      <div class="sh">データ出力</div>
+      <button class="csv-btn" onclick="exportCSV()">📥 全データをCSVでダウンロード</button>
+      <div class="sh">設定</div>
+      <div class="fb"><label class="fl">管理者PINの変更</label>
+        <div style="display:flex;gap:8px">
+          <input type="password" id="new-pin" placeholder="新しいPIN（4〜6桁）" inputmode="numeric" style="flex:1">
+          <button class="unlock-btn" style="margin:0;padding:10px 16px" onclick="changePin()">変更</button>
+        </div>
+      </div>
+      <div class="fb" style="margin-top:4px">
+        <label class="fl">接続設定のリセット（再設定が必要になります）</label>
+        <button class="danger-btn" onclick="resetConfig()">Supabase 接続設定をリセット</button>
+      </div>
+      <div class="fb" style="margin-top:8px"><button class="danger-btn" onclick="adminOut()">ログアウト</button></div>
+      <div style="height:16px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail overlay -->
+<div class="overlay" id="det-ov">
+  <div class="oh"><div class="bk" onclick="closeOv('det-ov')">←</div><div class="ot" id="det-title"></div></div>
+  <div style="padding:16px" id="det-body"></div>
+</div>
+
+<!-- Trainee overlay -->
+<div class="overlay" id="tr-ov">
+  <div class="oh"><div class="bk" onclick="closeOv('tr-ov')">←</div><div class="ot" id="tr-title"></div></div>
+  <div id="tr-body" style="padding-bottom:24px"></div>
+</div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────
+const SEGS=['S字結腸','下行結腸','脾弯曲','横行結腸','肝弯曲','上行結腸','盲腸'];
+const SEGS_S=['S状','下行','脾弯','横行','肝弯','上行','盲腸'];
+const SEG_COL=['#14532d','#166534','#15803d','#16a34a','#22c55e','#4ade80','#86efac'];
+const METHODS={loop:'ループ形成法',axis:'軸保持短縮法',both:'組み合わせ'};
+const MILESTONES=[
+  {label:'盲腸到達率 50%（初期10件）',desc:'最初の10件で50%以上',
+   fn:rs=>{const f=rs.slice(0,10);if(f.length<5)return{done:false,value:null,target:50,unit:'%'};const v=Math.round(f.filter(r=>r.reach==='盲腸').length/f.length*100);return{done:v>=50,value:v,target:50,unit:'%'};}},
+  {label:'盲腸到達率 80%（30件時点）',desc:'最初の30件で80%以上',
+   fn:rs=>{const f=rs.slice(0,30);if(f.length<10)return{done:false,value:null,target:80,unit:'%'};const v=Math.round(f.filter(r=>r.reach==='盲腸').length/f.length*100);return{done:v>=80,value:v,target:80,unit:'%'};}},
+  {label:'自力挿入率 50%（20件時点）',desc:'最初の20件で50%以上',
+   fn:rs=>{const f=rs.slice(0,20).filter(r=>r.self);if(f.length<5)return{done:false,value:null,target:50,unit:'%'};const v=Math.round(f.filter(r=>r.self==='self').length/f.length*100);return{done:v>=50,value:v,target:50,unit:'%'};}},
+  {label:'平均挿入時間 20分以内（直近10件）',desc:'直近10件の平均が20分以下',
+   fn:rs=>{const f=rs.slice(-10).filter(r=>r.insert_time&&!isNaN(+r.insert_time));if(f.length<3)return{done:false,value:null,target:20,unit:'分'};const v=Math.round(f.reduce((s,r)=>s+ +r.insert_time,0)/f.length);return{done:v<=20,value:v,target:20,unit:'分'};}}
+];
+
+// ── State ──────────────────────────────────────────────────────────────
+let supabase = null;
+let cachedRecords = [];
+let pin = localStorage.getItem('tcs_pin')||'1234';
+let unlocked = false;
+let sel = {};
+let charts = {};
+let knownTrainees = [];
+
+// ── Config ─────────────────────────────────────────────────────────────
+function loadConfig(){
+  const url = localStorage.getItem('tcs_sb_url');
+  const key = localStorage.getItem('tcs_sb_key');
+  if(url && key){
+    try {
+      supabase = window.supabase.createClient(url, key);
+      document.getElementById('config-screen').classList.add('hidden');
+      document.getElementById('main-app').classList.remove('hidden');
+      initApp();
+    } catch(e) {
+      showToast('接続エラー: ' + e.message, true);
+    }
+  }
+}
+
+async function saveConfig(){
+  const url = document.getElementById('cfg-url').value.trim();
+  const key = document.getElementById('cfg-key').value.trim();
+  if(!url || !key){ showToast('URLとキーを両方入力してください', true); return; }
+  showLoading('接続確認中...');
+  try {
+    const client = window.supabase.createClient(url, key);
+    const {error} = await client.from('records').select('id').limit(1);
+    if(error) throw error;
+    localStorage.setItem('tcs_sb_url', url);
+    localStorage.setItem('tcs_sb_key', key);
+    supabase = client;
+    hideLoading();
+    document.getElementById('config-screen').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+    initApp();
+  } catch(e) {
+    hideLoading();
+    showToast('接続失敗: ' + (e.message||'URLまたはキーを確認してください'), true);
+  }
+}
+
+function resetConfig(){
+  if(!confirm('接続設定をリセットしますか？再度URLとキーの入力が必要です。'))return;
+  localStorage.removeItem('tcs_sb_url');
+  localStorage.removeItem('tcs_sb_key');
+  location.reload();
+}
+
+// ── App init ───────────────────────────────────────────────────────────
+async function initApp(){
+  showLoading('データを読み込み中...');
+  await fetchAll();
+  hideLoading();
+  renderHome();
+}
+
+async function fetchAll(){
+  const { data, error } = await supabase
+    .from('records')
+    .select('*')
+    .order('date', { ascending: true });
+  if(error){ showToast('読み込みエラー: '+error.message, true); return; }
+  cachedRecords = data || [];
+  knownTrainees = [...new Set(cachedRecords.map(r=>r.trainee).filter(Boolean))].sort();
+  document.getElementById('f-tlist').innerHTML = knownTrainees.map(t=>`<option value="${t}">`).join('');
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────
+function recsOf(trainee){ return cachedRecords.filter(r=>r.trainee===trainee); }
+function cecalRate(rs){ return rs.length?Math.round(rs.filter(r=>r.reach==='盲腸').length/rs.length*100):null; }
+function selfRate(rs){ const w=rs.filter(r=>r.self); return w.length?Math.round(w.filter(r=>r.self==='self').length/w.length*100):null; }
+function avgInsert(rs){ const w=rs.filter(r=>r.insert_time&&!isNaN(+r.insert_time)); return w.length?Math.round(w.reduce((s,r)=>s+ +r.insert_time,0)/w.length):null; }
+function fmtD(d){ return d?d.replace(/-/g,'/'):'——'; }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+function destroyChart(id){ if(charts[id]){charts[id].destroy();charts[id]=null;} }
+
+// ── UI helpers ─────────────────────────────────────────────────────────
+function showToast(msg, isError=false){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast'+(isError?' error':'')+' show';
+  setTimeout(()=>el.classList.remove('show'),2800);
+}
+function showLoading(msg='送信中...'){
+  document.getElementById('loading-msg').textContent=msg;
+  document.getElementById('loading').classList.remove('hidden');
+}
+function hideLoading(){ document.getElementById('loading').classList.add('hidden'); }
+
+// ── Routing ────────────────────────────────────────────────────────────
+function go(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.getElementById('screen-'+name).classList.remove('hidden');
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('nav-'+name).classList.add('active');
+  if(name==='home')renderHome();
+  if(name==='entry')initEntry();
+  if(name==='history')renderHist();
+  if(name==='admin')renderAdmin();
+}
+function openOv(id){ document.getElementById(id).classList.add('open'); }
+function closeOv(id){ document.getElementById(id).classList.remove('open'); }
+
+// ── HOME ───────────────────────────────────────────────────────────────
+function renderHome(){
+  const cur=localStorage.getItem('tcs_cur')||'';
+  const rs=cur?recsOf(cur):cachedRecords;
+  const sorted=rs.slice().sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById('h-tname').textContent=cur||'全員';
+  document.getElementById('h-total').textContent=sorted.length;
+  document.getElementById('h-days').textContent=sorted.length>=2?daysBetween(sorted[0].date,sorted[sorted.length-1].date)+'日間':sorted[0]?fmtD(sorted[0].date):'——';
+  const cr=cecalRate(sorted),sr=selfRate(sorted);
+  const cn=sorted.filter(r=>r.reach==='盲腸').length,sn=sorted.filter(r=>r.self==='self').length;
+  document.getElementById('h-cecal').textContent=cr!==null?cr+'%':'——';
+  document.getElementById('h-cs').textContent=cn+' / '+sorted.length+' 件';
+  document.getElementById('h-self').textContent=sr!==null?sr+'%':'——';
+  document.getElementById('h-ss').textContent=sn+' / '+sorted.length+' 件';
+  const last=sorted[sorted.length-1];
+  document.getElementById('h-last').textContent=last?(last.reach||'——'):'——';
+  document.getElementById('h-ld').textContent=last?fmtD(last.date):'記録なし';
+
+  const cnt={};SEGS.forEach(s=>cnt[s]=0);
+  sorted.forEach(r=>{if(cnt[r.reach]!==undefined)cnt[r.reach]++;});
+  const mx=Math.max(...Object.values(cnt),1);
+  document.getElementById('seg-bars').innerHTML=SEGS.map((s,i)=>{
+    const c=cnt[s],p=Math.round(c/mx*100);
+    return`<div class="sr2"><div class="sl">${s}</div><div class="st"><div class="sf" style="width:${p}%;background:${SEG_COL[i]}">${c>0?`<span class="sn">${c}</span>`:''}</div></div></div>`;
+  }).join('');
+
+  const r20=sorted.slice(-20);
+  destroyChart('hm-reach');
+  const rctx=document.getElementById('hm-reach').getContext('2d');
+  charts['hm-reach']=new Chart(rctx,{
+    type:'line',
+    data:{labels:r20.map((_,i)=>'#'+(sorted.length-r20.length+i+1)),
+      datasets:[{data:r20.map(r=>SEGS.indexOf(r.reach)),borderColor:'#4ade80',backgroundColor:'rgba(74,222,128,.07)',borderWidth:2,pointRadius:5,
+        pointBackgroundColor:r20.map(r=>r.self==='self'?'#4ade80':'#fbbf24'),fill:true,tension:.35}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{min:-.5,max:6.5,ticks:{stepSize:1,callback:v=>SEGS_S[Math.round(v)]||'',color:'#5a7062',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}},
+        x:{ticks:{color:'#5a7062',font:{size:9},maxRotation:0},grid:{display:false}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const r=r20[ctx.dataIndex];return` ${r.reach||'——'} (${r.self==='self'?'自力':'指導下'})`;}}}}
+    }
+  });
+
+  const mc={loop:0,axis:0,both:0};sorted.forEach(r=>{if(mc[r.method]!==undefined)mc[r.method]++;});
+  destroyChart('hm-method');
+  charts['hm-method']=new Chart(document.getElementById('hm-method').getContext('2d'),{
+    type:'doughnut',
+    data:{datasets:[{data:[mc.loop,mc.axis,mc.both],backgroundColor:['#fbbf24','#60a5fa','#c084fc'],borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}
+  });
+  document.getElementById('method-legend').innerHTML=
+    `<div><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#fbbf24;margin-right:6px"></span>ループ形成 ${mc.loop}件</div>
+     <div><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#60a5fa;margin-right:6px"></span>軸保持短縮 ${mc.axis}件</div>
+     <div><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#c084fc;margin-right:6px"></span>組み合わせ ${mc.both}件</div>`;
+}
+
+// ── ENTRY ──────────────────────────────────────────────────────────────
+function initEntry(){
+  sel={};
+  document.querySelectorAll('.chip').forEach(c=>c.className='chip');
+  document.querySelectorAll('.tb').forEach(b=>b.className='tb');
+  ['f-trainee','f-case','f-sup','f-pt','f-good','f-bad','f-fb','f-it','f-ot','f-purpose-other'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+  const cur=localStorage.getItem('tcs_cur');
+  if(cur)document.getElementById('f-trainee').value=cur;
+}
+function sc(el,group,cls){
+  el.closest('.cg').querySelectorAll('.chip[data-v]').forEach(c=>c.className='chip');
+  el.classList.add(cls);sel[group]=el.dataset.v;
+}
+function st(el,group,cls){
+  el.parentElement.querySelectorAll('.tb').forEach(b=>b.className='tb');
+  el.classList.add(cls);sel[group]=el.dataset.v;
+}
+
+async function saveRec(){
+  const trainee=document.getElementById('f-trainee').value.trim();
+  const date=document.getElementById('f-date').value;
+  if(!trainee){showToast('研修医名を入力してください',true);return;}
+  if(!date){showToast('検査日を入力してください',true);return;}
+  const btn=document.getElementById('save-btn');
+  btn.disabled=true;
+  showLoading('保存中...');
+  const {error}=await supabase.from('records').insert({
+    trainee, date,
+    caseno:document.getElementById('f-case').value.trim()||null,
+    supervisor:document.getElementById('f-sup').value.trim()||null,
+    patient:document.getElementById('f-pt').value.trim()||null,
+    purpose:sel.purpose||null,
+    sedation:sel.sedation||null,
+    antispasmodic:sel.antispasmodic||null,
+    reach:sel.reach||null,
+    self:sel.self||null,
+    method:sel.method||null,
+    difficulty:sel.diff||null,
+    insert_time:document.getElementById('f-it').value||null,
+    obs_time:document.getElementById('f-ot').value||null,
+    good:document.getElementById('f-good').value.trim()||null,
+    bad:document.getElementById('f-bad').value.trim()||null,
+    feedback:document.getElementById('f-fb').value.trim()||null
+  });
+  hideLoading();
+  btn.disabled=false;
+  if(error){showToast('保存失敗: '+error.message,true);return;}
+  localStorage.setItem('tcs_cur',trainee);
+  if(navigator.vibrate)navigator.vibrate(40);
+  await fetchAll();
+  showToast('保存しました');
+  go('home');
+}
+
+// ── HISTORY ────────────────────────────────────────────────────────────
+function renderHist(){
+  const q=(document.getElementById('hs').value||'').toLowerCase();
+  const sorted=cachedRecords.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const filtered=q?sorted.filter(r=>(r.trainee||'').toLowerCase().includes(q)||(r.reach||'').includes(q)||(r.good||'').toLowerCase().includes(q)||(r.bad||'').toLowerCase().includes(q)):sorted;
+  const el=document.getElementById('hist-list');
+  if(!filtered.length){el.innerHTML='<div class="empty">記録がありません</div>';return;}
+  el.innerHTML=filtered.map(r=>{
+    const dot=r.reach==='盲腸'?'#4ade80':r.reach==='未到達'?'#f87171':'#fbbf24';
+    return`<div class="ri" onclick="openDet(${r.id})"><div class="rdot" style="background:${dot}"></div>
+      <div class="rb"><div class="rdate">${fmtD(r.date)} &nbsp; ${r.trainee}</div>
+      <div class="rtitle">${r.reach||'部位未記録'}</div>
+      <div class="rtags">
+        ${r.self==='self'?'<span class="rtag tg">自力</span>':r.self==='assist'?'<span class="rtag ta">指導下</span>':''}
+        ${r.method?`<span class="rtag tb2">${METHODS[r.method]}</span>`:''}
+        ${r.insert_time?`<span class="rtag ta">${r.insert_time}分</span>`:''}
+      </div></div></div>`;
+  }).join('');
+}
+
+// ── DETAIL ─────────────────────────────────────────────────────────────
+function openDet(id){
+  const r=cachedRecords.find(x=>x.id===id);if(!r)return;
+  document.getElementById('det-title').textContent=`${r.trainee} — ${fmtD(r.date)}`;
+  const stars=r.difficulty?'★'.repeat(+r.difficulty)+'☆'.repeat(5-+r.difficulty):'——';
+  document.getElementById('det-body').innerHTML=`
+    <div class="dg">
+      <div class="df"><div class="dl">到達部位</div><div class="dv" style="font-size:20px;color:${r.reach==='盲腸'?'var(--green)':r.reach==='未到達'?'var(--red)':'var(--amber)'}">${r.reach||'——'}</div></div>
+      <div class="df"><div class="dl">自力挿入</div><div class="dv">${r.self==='self'?'✔ 自力':r.self==='assist'?'指導下':'——'}</div></div>
+      <div class="df"><div class="dl">検査目的</div><div class="dv">${r.purpose||'——'}</div></div>
+      <div class="df"><div class="dl">挿入法</div><div class="dv">${r.method?METHODS[r.method]:'——'}</div></div>
+      <div class="df"><div class="dl">鎮静剤</div><div class="dv">${r.sedation==='yes'?'使用あり':r.sedation==='no'?'使用なし':'——'}</div></div>
+      <div class="df"><div class="dl">鎮痙剤</div><div class="dv">${r.antispasmodic==='yes'?'使用あり':r.antispasmodic==='no'?'使用なし':'——'}</div></div>
+      <div class="df"><div class="dl">難易度</div><div class="dv" style="color:var(--amber)">${stars}</div></div>
+      <div class="df"><div class="dl">挿入時間</div><div class="dv">${r.insert_time?r.insert_time+'分':'——'}</div></div>
+      <div class="df"><div class="dl">観察時間</div><div class="dv">${r.obs_time?r.obs_time+'分':'——'}</div></div>
+      <div class="df"><div class="dl">指導医</div><div class="dv">${r.supervisor||'——'}</div></div>
+      <div class="df"><div class="dl">症例番号</div><div class="dv">${r.caseno||'——'}</div></div>
+      ${r.patient?`<div class="df full"><div class="dl">患者背景</div><div class="dv">${r.patient}</div></div>`:''}
+    </div>
+    ${r.good||r.bad||r.feedback?'<div class="sep"></div>':''}
+    ${r.good?`<div class="df" style="margin-bottom:12px"><div class="dl" style="color:var(--green)">良かった点</div><div class="dv" style="font-size:13px;font-weight:400;white-space:pre-wrap;color:var(--text2)">${r.good}</div></div>`:''}
+    ${r.bad?`<div class="df" style="margin-bottom:12px"><div class="dl" style="color:var(--amber)">反省点・課題</div><div class="dv" style="font-size:13px;font-weight:400;white-space:pre-wrap;color:var(--text2)">${r.bad}</div></div>`:''}
+    ${r.feedback?`<div class="df" style="margin-bottom:12px"><div class="dl" style="color:var(--blue)">指導医コメント</div><div class="dv" style="font-size:13px;font-weight:400;white-space:pre-wrap;color:var(--text2)">${r.feedback}</div></div>`:''}
+    <div class="sep"></div>
+    <button class="danger-btn" onclick="delRec(${id})">この記録を削除</button>`;
+  openOv('det-ov');
+}
+
+async function delRec(id){
+  if(!confirm('この記録を削除しますか？'))return;
+  showLoading('削除中...');
+  const{error}=await supabase.from('records').delete().eq('id',id);
+  hideLoading();
+  if(error){showToast('削除失敗: '+error.message,true);return;}
+  await fetchAll();
+  closeOv('det-ov');
+  renderHist();
+  showToast('削除しました');
+}
+
+// ── ADMIN ──────────────────────────────────────────────────────────────
+function renderAdmin(){
+  if(!unlocked){
+    document.getElementById('admin-gate').classList.remove('hidden');
+    document.getElementById('admin-content').classList.add('hidden');
+    return;
+  }
+  document.getElementById('admin-gate').classList.add('hidden');
+  document.getElementById('admin-content').classList.remove('hidden');
+  renderAdminContent();
+}
+function checkPin(){
+  if(document.getElementById('pin-inp').value===pin){unlocked=true;renderAdmin();}
+  else{showToast('PINが違います',true);document.getElementById('pin-inp').value='';}
+}
+function adminOut(){unlocked=false;renderAdmin();}
+function changePin(){
+  const np=document.getElementById('new-pin').value;
+  if(!np||np.length<4){showToast('4桁以上のPINを入力してください',true);return;}
+  pin=np;localStorage.setItem('tcs_pin',np);
+  document.getElementById('new-pin').value='';
+  showToast('PINを変更しました');
+}
+
+function renderAdminContent(){
+  const trs=knownTrainees;
+  const all=cachedRecords;
+  document.getElementById('a-tot').textContent=all.length;
+  document.getElementById('a-tr').textContent=trs.length;
+  document.getElementById('a-cr').textContent=cecalRate(all)!==null?cecalRate(all)+'%':'——';
+  document.getElementById('a-sr').textContent=selfRate(all)!==null?selfRate(all)+'%':'——';
+
+  document.getElementById('tr-picker').innerHTML=trs.map(t=>{
+    const tr=recsOf(t).sort((a,b)=>a.date.localeCompare(b.date));
+    const cr=cecalRate(tr),last=tr[tr.length-1];
+    return`<div class="tc" onclick="openTrainee('${t}')"><div style="flex:1">
+      <div class="tn">${t}</div>
+      <div class="tm">${tr.length}件 &nbsp;|&nbsp; 盲腸到達率 ${cr!==null?cr+'%':'——'} &nbsp;|&nbsp; 最終: ${last?fmtD(last.date):'——'}</div>
+      <div class="prog"><div class="pf" style="width:${cr||0}%"></div></div>
+    </div><div style="color:var(--text3);font-size:17px">›</div></div>`;
+  }).join('')||'<div class="empty">記録がありません</div>';
+
+  destroyChart('cmp-chart');
+  if(trs.length){
+    const h=Math.max(trs.length*44+60,200);
+    document.getElementById('cmp-wrap').style.height=h+'px';
+    charts['cmp-chart']=new Chart(document.getElementById('cmp-chart').getContext('2d'),{
+      type:'bar',
+      data:{labels:trs,datasets:[{data:trs.map(t=>cecalRate(recsOf(t))||0),backgroundColor:'#16a34a',borderRadius:4,borderSkipped:false}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        scales:{x:{min:0,max:100,ticks:{callback:v=>v+'%',color:'#5a7062',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}},
+          y:{ticks:{color:'#8fa896',font:{size:11}},grid:{display:false}}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw}%`}}}}
+    });
+  }
+}
+
+// ── Trainee proficiency overlay ────────────────────────────────────────
+function bmPlugin(color,value,label){
+  return{id:'bm_'+value,afterDraw(chart){
+    try{
+      const{ctx,chartArea:{left,right},scales:{y}}=chart;
+      const yPos=y.getPixelForValue(value);
+      ctx.save();ctx.strokeStyle=color;ctx.lineWidth=1;ctx.setLineDash([4,3]);
+      ctx.beginPath();ctx.moveTo(left,yPos);ctx.lineTo(right,yPos);ctx.stroke();
+      ctx.fillStyle=color;ctx.font='9px IBM Plex Mono';
+      ctx.fillText(label,right-32,yPos-4);
+      ctx.restore();
+    }catch(e){}
+  }};
+}
+function rollingRate(rs,fn,w=5){
+  const out=[];
+  for(let i=w-1;i<rs.length;i++){
+    const sl=rs.slice(Math.max(0,i-w+1),i+1);
+    const v=fn(sl);if(v!==null)out.push({x:'#'+(i+1),y:v});
+  }
+  return out;
+}
+
+function openTrainee(trainee){
+  const tr=recsOf(trainee).sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById('tr-title').textContent=trainee;
+  const cr=cecalRate(tr),sr=selfRate(tr),ai=avgInsert(tr);
+  const days=tr.length>=2?daysBetween(tr[0].date,tr[tr.length-1].date):0;
+
+  const cecalRolling=rollingRate(tr,rs=>Math.round(rs.filter(r=>r.reach==='盲腸').length/rs.length*100));
+  const selfRolling=rollingRate(tr,rs=>{const w=rs.filter(r=>r.self);return w.length?Math.round(w.filter(r=>r.self==='self').length/w.length*100):null;});
+  const timePts=tr.map((r,i)=>({x:'#'+(i+1),y:r.insert_time&&!isNaN(+r.insert_time)?+r.insert_time:null})).filter(p=>p.y!==null);
+  const timeMA=timePts.map((_,i)=>{const w=timePts.slice(Math.max(0,i-4),i+1);return{x:timePts[i].x,y:Math.round(w.reduce((s,p)=>s+p.y,0)/w.length)};});
+
+  const msHtml=MILESTONES.map(m=>{
+    const{done,value,target,unit}=m.fn(tr);
+    const valStr=value!==null?` (${value}${unit})`:` (目標: ${target}${unit})`;
+    return`<div class="milestone ${done?'ms-done':'ms-pend'}"><div class="ms-icon">${done?'✅':'⬜'}</div>
+      <div><div class="ms-label" style="color:${done?'var(--green)':'var(--text2)'}">${m.label}</div>
+      <div class="ms-sub">${m.desc}${valStr}</div></div></div>`;
+  }).join('');
+
+  document.getElementById('tr-body').innerHTML=`
+    <div style="height:12px"></div>
+    <div class="stat-row">
+      <div class="sc"><div class="lb">検査数</div><div class="vl vg">${tr.length}</div><div class="sb">${days}日間</div></div>
+      <div class="sc"><div class="lb">盲腸到達率</div><div class="vl vg">${cr!==null?cr+'%':'——'}</div></div>
+      <div class="sc"><div class="lb">自力挿入率</div><div class="vl va">${sr!==null?sr+'%':'——'}</div></div>
+      <div class="sc"><div class="lb">平均挿入時間</div><div class="vl vb">${ai!==null?ai+'分':'——'}</div></div>
+    </div>
+    <div class="sh">達成基準チェック</div>
+    <div style="padding:0 16px 4px">${msHtml}</div>
+    <div class="sh">盲腸到達率の推移（5件移動平均）</div>
+    <div class="card" style="padding-bottom:10px">
+      <div class="cw" style="height:145px"><canvas id="tr-cecal"></canvas></div>
+      <div class="bm-note">基準ライン: 80%</div>
+    </div>
+    <div class="sh">自力挿入率の推移（5件移動平均）</div>
+    <div class="card" style="padding-bottom:10px">
+      <div class="cw" style="height:145px"><canvas id="tr-self"></canvas></div>
+      <div class="bm-note">基準ライン: 50%</div>
+    </div>
+    <div class="sh">挿入時間の推移</div>
+    <div class="card" style="padding-bottom:10px">
+      <div class="cw" style="height:145px"><canvas id="tr-time"></canvas></div>
+      <div class="bm-note">目標: 20分 &nbsp;|&nbsp; 薄点: 実測, 実線: 5件平均</div>
+    </div>
+    <div class="sh">到達部位の推移</div>
+    <div class="card">
+      <div class="cw" style="height:140px"><canvas id="tr-reach"></canvas></div>
+    </div>
+    <div class="sh">記録一覧</div>
+    <div class="rl" style="padding-bottom:16px">
+      ${tr.slice().reverse().map(r=>{
+        const dot=r.reach==='盲腸'?'#4ade80':r.reach==='未到達'?'#f87171':'#fbbf24';
+        return`<div class="ri" onclick="openDet(${r.id})"><div class="rdot" style="background:${dot}"></div>
+          <div class="rb"><div class="rdate">${fmtD(r.date)}</div><div class="rtitle">${r.reach||'——'}</div>
+          <div class="rtags">
+            ${r.self==='self'?'<span class="rtag tg">自力</span>':r.self==='assist'?'<span class="rtag ta">指導下</span>':''}
+            ${r.method?`<span class="rtag tb2">${METHODS[r.method]}</span>`:''}
+            ${r.insert_time?`<span class="rtag ta">${r.insert_time}分</span>`:''}
+          </div></div></div>`;
+      }).join('')}
+    </div>`;
+  openOv('tr-ov');
+
+  setTimeout(()=>{
+    const axOpts=(yMin,yMax,yCb)=>({
+      responsive:true,maintainAspectRatio:false,
+      scales:{
+        y:{min:yMin,max:yMax,ticks:{callback:yCb,color:'#5a7062',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}},
+        x:{ticks:{color:'#5a7062',font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:8},grid:{display:false}}
+      },
+      plugins:{legend:{display:false}}
+    });
+    const cc=document.getElementById('tr-cecal');
+    if(cc&&cecalRolling.length){
+      new Chart(cc.getContext('2d'),{type:'line',
+        data:{datasets:[{data:cecalRolling,borderColor:'#4ade80',backgroundColor:'rgba(74,222,128,.08)',borderWidth:2,pointRadius:3,fill:true,tension:.4,parsing:{xAxisKey:'x',yAxisKey:'y'}}]},
+        options:{...axOpts(0,100,v=>v+'%'),plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw.y}%`}}}},
+        plugins:[bmPlugin('rgba(74,222,128,.55)',80,'80%')]
+      });
+    }
+    const sc2=document.getElementById('tr-self');
+    if(sc2&&selfRolling.length){
+      new Chart(sc2.getContext('2d'),{type:'line',
+        data:{datasets:[{data:selfRolling,borderColor:'#fbbf24',backgroundColor:'rgba(251,191,36,.08)',borderWidth:2,pointRadius:3,fill:true,tension:.4,parsing:{xAxisKey:'x',yAxisKey:'y'}}]},
+        options:{...axOpts(0,100,v=>v+'%'),plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw.y}%`}}}},
+        plugins:[bmPlugin('rgba(251,191,36,.55)',50,'50%')]
+      });
+    }
+    const tc=document.getElementById('tr-time');
+    if(tc&&timePts.length){
+      new Chart(tc.getContext('2d'),{type:'line',
+        data:{datasets:[
+          {data:timePts,borderColor:'rgba(96,165,250,.35)',backgroundColor:'transparent',borderWidth:1,pointRadius:3,pointBackgroundColor:'#60a5fa',tension:.2,parsing:{xAxisKey:'x',yAxisKey:'y'}},
+          {data:timeMA,borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,.08)',borderWidth:2,pointRadius:0,fill:true,tension:.4,parsing:{xAxisKey:'x',yAxisKey:'y'}}
+        ]},
+        options:{...axOpts(0,undefined,v=>v+'分'),plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw.y}分`}}}},
+        plugins:[bmPlugin('rgba(96,165,250,.55)',20,'20分')]
+      });
+    }
+    const rc=document.getElementById('tr-reach');
+    if(rc){
+      new Chart(rc.getContext('2d'),{type:'line',
+        data:{labels:tr.map((_,i)=>'#'+(i+1)),
+          datasets:[{data:tr.map(r=>SEGS.indexOf(r.reach)),borderColor:'#4ade80',backgroundColor:'rgba(74,222,128,.07)',borderWidth:2,pointRadius:4,
+            pointBackgroundColor:tr.map(r=>r.self==='self'?'#4ade80':'#fbbf24'),fill:true,tension:.35}]},
+        options:{...axOpts(-.5,6.5,v=>SEGS_S[Math.round(v)]||''),plugins:{legend:{display:false}}}
+      });
+    }
+  },120);
+}
+
+// ── CSV export ─────────────────────────────────────────────────────────
+function exportCSV(){
+  const hdr=['ID','研修医名','検査日','症例番号','患者背景','検査目的','到達部位','自力挿入','挿入法','難易度','挿入時間(分)','観察時間(分)','鎮静剤','鎮痙剤','指導医','良かった点','反省点','指導医コメント','記録日時'];
+  const rows=cachedRecords.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(r=>[
+    r.id,r.trainee,r.date,r.caseno,r.patient,r.purpose||'',r.reach,
+    r.self==='self'?'自力':r.self==='assist'?'指導下':'',
+    METHODS[r.method]||r.method||'',
+    r.difficulty,r.insert_time,r.obs_time,
+    r.sedation==='yes'?'使用あり':r.sedation==='no'?'使用なし':'',
+    r.antispasmodic==='yes'?'使用あり':r.antispasmodic==='no'?'使用なし':'',
+    r.supervisor,r.good,r.bad,r.feedback,r.created_at
+  ].map(v=>'"'+(String(v||'').replace(/"/g,'""'))+'"'));
+  const csv='\uFEFF'+[hdr.join(','),...rows.map(r=>r.join(','))].join('\n');
+  Object.assign(document.createElement('a'),{
+    href:URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})),
+    download:'tcs_records_'+new Date().toISOString().slice(0,10)+'.csv'
+  }).click();
+  showToast('CSVをダウンロードしました');
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────
+loadConfig();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
