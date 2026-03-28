@@ -386,7 +386,7 @@ async function saveConfig(){
     if(error) throw error;
     localStorage.setItem('tcs_sb_url', url);
     localStorage.setItem('tcs_sb_key', key);
-    supabase = client;
+    sb = client;
     hideLoading();
     document.getElementById('config-screen').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
