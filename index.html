@@ -351,7 +351,7 @@ const MILESTONES=[
 ];
 
 // ── State ──────────────────────────────────────────────────────────────
-let supabase = null;
+let sb = null;
 let cachedRecords = [];
 let pin = localStorage.getItem('tcs_pin')||'1234';
 let unlocked = false;
@@ -365,7 +365,7 @@ function loadConfig(){
   const key = localStorage.getItem('tcs_sb_key');
   if(url && key){
     try {
-      supabase = window.supabase.createClient(url, key);
+      sb = window.supabase.createClient(url, key);
       document.getElementById('config-screen').classList.add('hidden');
       document.getElementById('main-app').classList.remove('hidden');
       initApp();
@@ -413,7 +413,7 @@ async function initApp(){
 }
 
 async function fetchAll(){
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('records')
     .select('*')
     .order('date', { ascending: true });
@@ -542,7 +542,7 @@ async function saveRec(){
   const btn=document.getElementById('save-btn');
   btn.disabled=true;
   showLoading('保存中...');
-  const {error}=await supabase.from('records').insert({
+  const {error}=await sb.from('records').insert({
     trainee, date,
     caseno:document.getElementById('f-case').value.trim()||null,
     supervisor:document.getElementById('f-sup').value.trim()||null,
@@ -622,7 +622,7 @@ function openDet(id){
 async function delRec(id){
   if(!confirm('この記録を削除しますか？'))return;
   showLoading('削除中...');
-  const{error}=await supabase.from('records').delete().eq('id',id);
+  const{error}=await sb.from('records').delete().eq('id',id);
   hideLoading();
   if(error){showToast('削除失敗: '+error.message,true);return;}
   await fetchAll();
