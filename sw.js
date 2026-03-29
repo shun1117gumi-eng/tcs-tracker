@@ -1,15 +1,8 @@
-const CACHE = 'tcs-tracker-v1';
-const ASSETS = [
-  '/index.html',
-  '/manifest.json',
-  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js',
-  'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap'
-];
+const CACHE = 'tcs-tracker-v3';
+const ASSETS = ['/tcs-tracker/', '/tcs-tracker/index.html', '/tcs-tracker/manifest.json'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {}))
-  );
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {})));
   self.skipWaiting();
 });
 
@@ -23,16 +16,14 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
-        if (res && res.status === 200 && res.type !== 'opaque') {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      }).catch(() => cached);
-    })
+    fetch(e.request).then(res => {
+      if (res && res.status === 200) {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+      }
+      return res;
+    }).catch(() => caches.match(e.request))
   );
 });
