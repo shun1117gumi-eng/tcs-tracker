@@ -196,11 +196,12 @@ textarea{resize:none;min-height:76px}
 
   <!-- HOME -->
   <div class="screen" id="screen-home">
-    <div class="topbar"><span class="tt">TCS TRACKER</span>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:12px;color:var(--text3)" id="h-tname">——</span>
-        <button onclick="showUserScreen()" style="font-size:11px;padding:4px 10px;background:var(--surface);border:1px solid var(--border2);border-radius:20px;color:var(--text2);cursor:pointer;font-family:var(--sans)">切替</button>
-      </div>
+    <div class="topbar">
+      <span class="tt">TCS TRACKER</span>
+      <button onclick="showUserScreen()" style="font-size:11px;padding:5px 12px;background:var(--surface);border:1px solid var(--border2);border-radius:20px;color:var(--text2);cursor:pointer;font-family:var(--sans);display:flex;align-items:center;gap:5px;flex-shrink:0">
+        <span id="h-tname" style="color:var(--text);font-weight:500;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">——</span>
+        <span style="color:var(--text3)">切替</span>
+      </button>
     </div>
     <div style="height:12px"></div>
     <div class="stat-row">
