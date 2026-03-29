@@ -202,13 +202,13 @@ textarea{resize:none;min-height:76px}
     </div>
     <div style="height:12px"></div>
     <div class="stat-row">
-      <div class="sc"><div class="lb">総検査数</div><div class="vl" id="h-total">—</div><div class="sb" id="h-days">——</div></div>
+      <div class="sc"><div class="lb">総検査数</div><div class="vl vg" id="h-total">—</div><div class="sb" id="h-days">——</div></div>
       <div class="sc"><div class="lb">盲腸到達率</div><div class="vl vg" id="h-cecal">—</div><div class="sb" id="h-cs">——</div></div>
       <div class="sc"><div class="lb">自力挿入率</div><div class="vl va" id="h-self">—</div><div class="sb" id="h-ss">——</div></div>
-      <div class="sc"><div class="lb">直近の到達</div><div class="vl" id="h-last" style="font-size:17px">——</div><div class="sb" id="h-ld">——</div></div>
+      <div class="sc"><div class="lb">ADR</div><div class="vl vb" id="h-adr">—</div><div class="sb" id="h-adr-sub">——</div></div>
     </div>
     <div class="card"><div class="ctitle">到達部位の分布</div><div id="seg-bars"></div></div>
-    <div class="card"><div class="ctitle">到達部位の推移（直近20件）</div><div class="cw" style="height:155px"><canvas id="hm-reach"></canvas></div></div>
+    <div class="card"><div class="ctitle">検査数の推移（月別）</div><div class="cw" style="height:155px"><canvas id="hm-monthly"></canvas></div></div>
     <div class="card">
       <div class="ctitle">挿入法の割合</div>
       <div style="display:flex;align-items:center;gap:16px">
@@ -223,7 +223,6 @@ textarea{resize:none;min-height:76px}
   <div class="screen hidden" id="screen-entry">
     <div class="topbar"><span class="tt">新規記録</span></div>
     <div style="height:12px"></div>
-    <div class="fb"><label class="fl">専攻医名</label><input type="text" id="f-trainee" list="f-tlist" placeholder="名前を入力" autocomplete="off"><datalist id="f-tlist"></datalist></div>
     <div class="fb"><label class="fl">検査日</label><input type="date" id="f-date"></div>
     <div class="fb"><label class="fl">指導医</label><input type="text" id="f-sup" placeholder="指導医名"></div>
 
@@ -535,7 +534,6 @@ async function fetchAll(){
   if(error){ showToast('読み込みエラー: '+error.message, true); return; }
   cachedRecords = data || [];
   knownTrainees = [...new Set(cachedRecords.map(r=>r.trainee).filter(Boolean))].sort();
-  document.getElementById('f-tlist').innerHTML = knownTrainees.map(t=>`<option value="${t}">`).join('');
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -584,13 +582,15 @@ function renderHome(){
   document.getElementById('h-days').textContent=sorted.length>=2?daysBetween(sorted[0].date,sorted[sorted.length-1].date)+'日間':sorted[0]?fmtD(sorted[0].date):'——';
   const cr=cecalRate(sorted),sr=selfRate(sorted);
   const cn=sorted.filter(r=>r.reach==='盲腸').length,sn=sorted.filter(r=>r.self==='self').length;
+  const adrN=sorted.filter(r=>r.adr==='あり').length;
+  const adrW=sorted.filter(r=>r.adr).length;
+  const adrVal=adrW>0?Math.round(adrN/adrW*100):null;
   document.getElementById('h-cecal').textContent=cr!==null?cr+'%':'——';
   document.getElementById('h-cs').textContent=cn+' / '+sorted.length+' 件';
   document.getElementById('h-self').textContent=sr!==null?sr+'%':'——';
   document.getElementById('h-ss').textContent=sn+' / '+sorted.length+' 件';
-  const last=sorted[sorted.length-1];
-  document.getElementById('h-last').textContent=last?(last.reach||'——'):'——';
-  document.getElementById('h-ld').textContent=last?fmtD(last.date):'記録なし';
+  document.getElementById('h-adr').textContent=adrVal!==null?adrVal+'%':'——';
+  document.getElementById('h-adr-sub').textContent=adrW>0?adrN+' / '+adrW+' 件':'記録なし';
 
   const cnt={};SEGS.forEach(s=>cnt[s]=0);
   sorted.forEach(r=>{if(cnt[r.reach]!==undefined)cnt[r.reach]++;});
@@ -600,20 +600,26 @@ function renderHome(){
     return`<div class="sr2"><div class="sl">${s}</div><div class="st"><div class="sf" style="width:${p}%;background:${SEG_COL[i]}">${c>0?`<span class="sn">${c}</span>`:''}</div></div></div>`;
   }).join('');
 
-  const r20=sorted.slice(-20);
-  destroyChart('hm-reach');
-  const rctx=document.getElementById('hm-reach').getContext('2d');
-  charts['hm-reach']=new Chart(rctx,{
-    type:'line',
-    data:{labels:r20.map((_,i)=>'#'+(sorted.length-r20.length+i+1)),
-      datasets:[{data:r20.map(r=>SEGS.indexOf(r.reach)),borderColor:'#4ade80',backgroundColor:'rgba(74,222,128,.07)',borderWidth:2,pointRadius:5,
-        pointBackgroundColor:r20.map(r=>r.self==='self'?'#4ade80':'#fbbf24'),fill:true,tension:.35}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      scales:{y:{min:-.5,max:6.5,ticks:{stepSize:1,callback:v=>SEGS_S[Math.round(v)]||'',color:'#5a7062',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}},
-        x:{ticks:{color:'#5a7062',font:{size:9},maxRotation:0},grid:{display:false}}},
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const r=r20[ctx.dataIndex];return` ${r.reach||'——'} (${r.self==='self'?'自力':'指導下'})`;}}}}
-    }
+  // 月別検査数
+  const monthly={};
+  sorted.forEach(r=>{
+    const m=r.date.slice(0,7);
+    monthly[m]=(monthly[m]||0)+1;
   });
+  const months=Object.keys(monthly).sort();
+  destroyChart('hm-monthly');
+  const mctx=document.getElementById('hm-monthly');
+  if(mctx){
+    charts['hm-monthly']=new Chart(mctx.getContext('2d'),{
+      type:'bar',
+      data:{labels:months.map(m=>m.replace('-','/')),
+        datasets:[{data:months.map(m=>monthly[m]),backgroundColor:'#16a34a',borderRadius:3,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        scales:{y:{ticks:{stepSize:1,color:'#5a7062',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}},
+          x:{ticks:{color:'#5a7062',font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:8},grid:{display:false}}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw}件`}}}}
+    });
+  }
 
   const mc={loop:0,axis:0,both:0};sorted.forEach(r=>{if(mc[r.method]!==undefined)mc[r.method]++;});
   destroyChart('hm-method');
@@ -633,12 +639,10 @@ function initEntry(){
   sel={};
   document.querySelectorAll('.chip').forEach(c=>c.className='chip');
   document.querySelectorAll('.tb').forEach(b=>b.className='tb');
-  ['f-trainee','f-sup','f-good','f-bad','f-it','f-ot','f-age','f-apc'].forEach(id=>{
+  ['f-sup','f-good','f-bad','f-it','f-ot','f-age','f-apc'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
-  const cur=localStorage.getItem('tcs_cur');
-  if(cur)document.getElementById('f-trainee').value=cur;
 }
 function sc(el,group,cls){
   el.closest('.cg').querySelectorAll('.chip[data-v]').forEach(c=>c.className='chip');
@@ -650,9 +654,9 @@ function st(el,group,cls){
 }
 
 async function saveRec(){
-  const trainee=document.getElementById('f-trainee').value.trim();
+  const trainee=localStorage.getItem('tcs_cur')||'';
   const date=document.getElementById('f-date').value;
-  if(!trainee){showToast('専攻医名を入力してください',true);return;}
+  if(!trainee){showToast('ユーザーが選択されていません',true);return;}
   if(!date){showToast('検査日を入力してください',true);return;}
   const btn=document.getElementById('save-btn');
   btn.disabled=true;
@@ -1070,7 +1074,7 @@ function exportCSV(){
 
 // ── Boot ───────────────────────────────────────────────────────────────
 loadConfig();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
 </script>
 </body>
 </html>
