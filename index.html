@@ -209,6 +209,8 @@ textarea{resize:none;min-height:76px}
       <div class="sc"><div class="lb">盲腸到達率</div><div class="vl vg" id="h-cecal">—</div><div class="sb" id="h-cs">——</div></div>
       <div class="sc"><div class="lb">自力挿入率</div><div class="vl va" id="h-self">—</div><div class="sb" id="h-ss">——</div></div>
       <div class="sc"><div class="lb">ADR</div><div class="vl vb" id="h-adr">—</div><div class="sb" id="h-adr-sub">——</div></div>
+      <div class="sc"><div class="lb">平均挿入時間</div><div class="vl" id="h-itime" style="font-size:20px">—</div><div class="sb">分</div></div>
+      <div class="sc"><div class="lb">平均観察時間</div><div class="vl" id="h-otime" style="font-size:20px">—</div><div class="sb">分</div></div>
     </div>
     <div class="card"><div class="ctitle">到達部位の分布</div><div id="seg-bars"></div></div>
     <div class="card"><div class="ctitle">検査数の推移（月別）</div><div class="cw" style="height:155px"><canvas id="hm-monthly"></canvas></div></div>
@@ -594,6 +596,13 @@ function renderHome(){
   document.getElementById('h-ss').textContent=sn+' / '+sorted.length+' 件';
   document.getElementById('h-adr').textContent=adrVal!==null?adrVal+'%':'——';
   document.getElementById('h-adr-sub').textContent=adrW>0?adrN+' / '+adrW+' 件':'記録なし';
+
+  const itW=sorted.filter(r=>r.insert_time&&!isNaN(+r.insert_time));
+  const otW=sorted.filter(r=>r.obs_time&&!isNaN(+r.obs_time));
+  const avgIt=itW.length?Math.round(itW.reduce((s,r)=>s+ +r.insert_time,0)/itW.length):null;
+  const avgOt=otW.length?Math.round(otW.reduce((s,r)=>s+ +r.obs_time,0)/otW.length):null;
+  document.getElementById('h-itime').textContent=avgIt!==null?avgIt:'——';
+  document.getElementById('h-otime').textContent=avgOt!==null?avgOt:'——';
 
   const cnt={};SEGS.forEach(s=>cnt[s]=0);
   sorted.forEach(r=>{if(cnt[r.reach]!==undefined)cnt[r.reach]++;});
